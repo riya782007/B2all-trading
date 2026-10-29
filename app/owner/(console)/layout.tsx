@@ -6,6 +6,7 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   manifest: "/owner-manifest.webmanifest",
+  robots: { index: false, follow: false },
   appleWebApp: { capable: true, title: "B2All", statusBarStyle: "default" },
   icons: { apple: "/pwa-icon/180" },
 };
@@ -19,7 +20,7 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
   return (
     <div className="mx-auto min-h-screen max-w-5xl md:flex">
       <aside className="hidden w-52 shrink-0 border-r border-line p-5 md:block">
-        <Link href="/" className="font-display text-xl font-semibold text-brand">B2All</Link>
+        <span className="font-display text-xl font-semibold text-brand">B2All</span>
         <div className="mt-1 text-xs text-muted">Owner console</div>
         <nav className="mt-8 space-y-1">{NAV.map(([h, l]) => <Link key={h} href={h} className="block rounded-xl px-3 py-2.5 font-medium hover:bg-soft">{l}</Link>)}</nav>
       </aside>

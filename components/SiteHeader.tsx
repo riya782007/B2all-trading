@@ -9,8 +9,8 @@ export default async function SiteHeader() {
         <Link href="/" className="font-display text-xl font-semibold tracking-tight text-brand">B2All <span className="text-muted font-normal">Commo</span></Link>
         <nav className="flex items-center gap-2 text-sm">
           <Link href="/basket" className="btn btn-ghost !min-h-10 !py-2">My enquiry</Link>
-          {user ? (
-            <Link href={user.role === "owner" ? "/owner" : "/account"} className="btn btn-primary !min-h-10 !py-2">{user.role === "owner" ? "Console" : user.name.split(" ")[0]}</Link>
+          {user && user.role !== "owner" ? (
+            <Link href="/account" className="btn btn-primary !min-h-10 !py-2">{user.name.split(" ")[0]}</Link>
           ) : (
             <Link href="/login" className="btn btn-primary !min-h-10 !py-2">Sign in</Link>
           )}

@@ -22,7 +22,7 @@ export default async function Home() {
           <p className="mt-5 max-w-xl text-lg text-muted">Coal, ferro alloys, iron ore, scrap and minerals for steel mills, power plants and factories. Tell us what you need and we will bring you a quote.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="#materials" className="btn btn-primary">Browse materials</a>
-            {!user && <Link href="/login" className="btn btn-ghost">Sign in with your mobile</Link>}
+            {(!user || user.role === "owner") && <Link href="/login" className="btn btn-ghost">Sign in with your mobile</Link>}
           </div>
         </section>
 
