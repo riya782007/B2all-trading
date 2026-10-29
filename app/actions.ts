@@ -7,52 +7,60 @@ import * as store from "@/lib/store";
 import type { Channel, Status } from "@/lib/types";
 import { NEXT_STATUS } from "@/lib/types";
 
-export type LoginState = { step: "details" | "otp"; phone?: string; name?: string; city?: string; error?: string; next?: string };
+export type LoginState = { error?: string; name?: string; city?: string; phone?: string; next?: string };
 
 function normalisePhone(raw: string) {
   const d = raw.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
   return /^[6-9]\d{9}$/.test(d) ? `+91${d}` : null;
 }
 
-export async function requestOtp(_: LoginState, fd: FormData): Promise<LoginState> {
+/** One-step sign-in: name, mobile, city. No code for now. The browser keeps the session, so the customer
+ *  returns to their own page on this device. A phone code can be added later without changing the screens. */
+export async function loginAction(prev: LoginState, fd: FormData): Promise<LoginState> {
   const name = String(fd.get("name") ?? "").trim();
   const city = String(fd.get("city") ?? "").trim();
-  const phone = normalisePhone(String(fd.get("phone") ?? ""));
-  const next = String(fd.get("next") ?? "");
-  if (name.length < 2) return { step: "details", error: "Please enter your name.", name, city, next };
-  if (!phone) return { step: "details", error: "Enter a valid 10-digit mobile number.", name, city, next };
-  if (city.length < 2) return { step: "details", error: "Please enter your city.", name, city, next };
-  if (hasSupabase) {
-    const sb = await supabaseServer();
-    const { error } = await sb.auth.signInWithOtp({ phone });
-    if (error) return { step: "details", error: "Could not send the code. Please try again.", name, city, next };
-  }
-  return { step: "otp", phone, name, city, next };
-}
+  const rawPhone = String(fd.get("phone") ?? "");
+  const next = String(fd.get("next") ?? prev.next ?? "");
+  const phone = normalisePhone(rawPhone);
+  const keep = { name, city, phone: rawPhone, next };
+  if (name.length < 2) return { ...keep, error: "Please enter your name." };
+  if (!phone) return { ...keep, error: "Enter a valid 10-digit mobile number." };
+  if (city.length < 2) return { ...keep, error: "Please enter your city." };
 
-export async function verifyOtp(prev: LoginState, fd: FormData): Promise<LoginState> {
-  const code = String(fd.get("code") ?? "").trim();
-  const { phone, name = "", city = "", next = "" } = prev;
-  if (!phone) return { step: "details" };
-  let role: "customer" | "owner" = "customer";
   if (hasSupabase) {
     const sb = await supabaseServer();
-    const { data, error } = await sb.auth.verifyOtp({ phone, token: code, type: "sms" });
-    if (error || !data.user) return { ...prev, error: "That code is not correct." };
-    // Use this same client: it holds the new session, while a fresh client would still be anonymous.
-    const { data: existing } = await sb.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
-    const { error: pe } = existing
-      ? await sb.from("profiles").update({ phone, name, city }).eq("id", data.user.id)
-      : await sb.from("profiles").insert({ id: data.user.id, phone, name, city });
-    if (pe) return { ...prev, error: "Signed in, but we could not save your details. Please try again." };
-    role = existing?.role === "owner" ? "owner" : "customer";
+    let { data: { user } } = await sb.auth.getUser();
+    if (!user) {
+      const r = await sb.auth.signInAnonymously();
+      if (r.error || !r.data.user) return { ...keep, error: "Sign-in is not available right now. Please try again shortly." };
+      user = r.data.user;
+    }
+    const { data: existing } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    const { error } = existing
+      ? await sb.from("profiles").update({ phone, name, city }).eq("id", user.id)
+      : await sb.from("profiles").insert({ id: user.id, phone, name, city });
+    if (error) return { ...keep, error: "We could not save your details. Please try again." };
   } else {
-    if (code !== "123456") return { ...prev, error: "Demo code is 123456." };
-    const u = await store.upsertCustomer({ phone, name, city });
-    role = u?.role ?? "customer";
+    await store.upsertCustomer({ phone, name, city });
     (await cookies()).set("b2_demo", phone, { httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30 });
   }
-  redirect(role === "owner" ? "/owner" : next.startsWith("/") ? next : "/account");
+  redirect(next.startsWith("/") ? next : "/account");
+}
+
+export type OwnerState = { error?: string };
+
+/** Owner sign-in: email and password (live) or one button (demo). Only accounts with role "owner" get in. */
+export async function ownerLogin(_: OwnerState, fd: FormData): Promise<OwnerState> {
+  if (!hasSupabase) {
+    (await cookies()).set("b2_demo", "+919000000000", { httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30 });
+    redirect("/owner");
+  }
+  const sb = await supabaseServer();
+  const { data, error } = await sb.auth.signInWithPassword({ email: String(fd.get("email") ?? "").trim(), password: String(fd.get("password") ?? "") });
+  if (error || !data.user) return { error: "Email or password is not correct." };
+  const { data: p } = await sb.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
+  if (p?.role !== "owner") { await sb.auth.signOut(); return { error: "This account is not an owner account." }; }
+  redirect("/owner");
 }
 
 export async function logout() {
@@ -73,7 +81,7 @@ export async function submitEnquiry(payload: string, note: string) {
 
 async function owner() {
   const u = await store.getUser();
-  if (!u || u.role !== "owner") redirect("/login?next=/owner");
+  if (!u || u.role !== "owner") redirect("/owner/login");
   return u;
 }
 
@@ -99,6 +107,3 @@ export async function sendOffer(fd: FormData) {
   redirect(`/owner/offers?sent=${offerId}&channel=${channel}`);
 }
 
-export async function loginAction(prev: LoginState, fd: FormData): Promise<LoginState> {
-  return prev.step === "otp" ? verifyOtp(prev, fd) : requestOtp(prev, fd);
-}

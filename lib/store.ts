@@ -90,8 +90,12 @@ export async function listCustomers(): Promise<(Customer & { enquiryCount: numbe
     const { data } = await sb.from("profiles").select("*").eq("role", "customer").order("created_at", { ascending: false });
     rows = (data ?? []).map(toCustomer);
   }
-  return rows.map((r) => {
-    const mine = enq.filter((e) => e.customerId === r.id);
+  // Without a phone code the same person can appear on two devices: show them once, by mobile number.
+  const byPhone = new Map<string, Customer[]>();
+  rows.forEach((r) => byPhone.set(r.phone, [...(byPhone.get(r.phone) ?? []), r]));
+  return [...byPhone.values()].map((group) => {
+    const r = [...group].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0];
+    const mine = enq.filter((e) => group.some((g) => g.id === e.customerId));
     return { ...r, enquiryCount: mine.length, lastEnquiry: mine[0]?.createdAt };
   });
 }

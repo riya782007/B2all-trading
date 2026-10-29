@@ -3,7 +3,7 @@ create extension if not exists pgcrypto;
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  phone text unique not null,
+  phone text not null, -- not unique: until phone codes are on, one person may sign in from two devices
   name text not null default '',
   city text not null default '',
   company text,
@@ -14,6 +14,8 @@ create table public.profiles (
   email text,
   created_at timestamptz not null default now()
 );
+
+create index profiles_phone_idx on public.profiles(phone);
 
 create table public.materials (
   id uuid primary key default gen_random_uuid(),

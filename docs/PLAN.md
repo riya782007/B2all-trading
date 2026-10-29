@@ -8,7 +8,7 @@ Principle: complex behind the scenes, nothing to learn on the front. A customer 
 |---|---|---|
 | Indian B2B marketplaces (mjunction, Moglix, Udaan) are built around a buyer account, requests for quotes and linked services (finance, logistics, quality, warehouses). | [mjunction e-marketplace](https://www.mjunction.in/services/selling/emarketplace/) | Buyer account with a personal page is the core. Services (logistics, finance) stay out of scope: B2All is a trader, not a marketplace. |
 | Commodity prices move daily, so public catalogues show products, not prices. | Amit, on the call | No prices on the site. Price only appears in a quote. |
-| Supabase phone login can send the OTP through any Indian SMS provider using the Send SMS hook (payload has `user.phone` and a 6-digit `sms.otp`; hook is a signed webhook). | [Supabase Send SMS hook](https://supabase.com/docs/guides/auth/auth-hooks/send-sms-hook.md) | Phone OTP login, with MSG91 behind the hook. Indian SMS needs DLT registration of sender and template, which takes days and must be started early. |
+| Supabase phone login can send the OTP through any Indian SMS provider using the Send SMS hook. Indian SMS needs DLT registration, which takes days. | [Supabase Send SMS hook](https://supabase.com/docs/guides/auth/auth-hooks/send-sms-hook.md) | Deferred by decision: first phase has no code step. Revisit when DLT is registered. |
 | E-invoicing applies above ₹5 crore aggregate turnover (all GSTINs under one PAN). | [Tally Solutions](https://tallysolutions.com/gst/e-invoicing-threshold/) | B2All's turnover is unverified. Ask the accountant. If above ₹5 cr, invoices need an IRN from the government portal, and that is best done from Tally itself. |
 | Tally accepts vouchers over HTTP/XML (server mode, default port 9000, a `VOUCHER` inside `TALLYMESSAGE`, reply reports `CREATED`/`ERRORS`). | [Tally help](https://help.tallysolutions.com/tallyprime-as-server/) | Do not build GST invoices ourselves. Create a Tally sales voucher from a confirmed deal and let Tally produce the invoice. Needs a small connector on the office PC. |
 | Small-business commodity software (CTRM) is mostly about contracts, positions, risk and compliance, aimed at large traders. | [Capterra CTRM list](https://www.capterra.com/ctrm-software/) | Most CTRM features (hedging, mark-to-market, risk engines) are not relevant for a back-to-back physical trader. We take the contract and deal-book ideas only. |
@@ -19,7 +19,7 @@ Not yet researched in depth: WhatsApp template approval for offers (opt-in and m
 
 | # | Feature | Verdict | Phase |
 |---|---|---|---|
-| 1 | Visitors give name, phone, city before they enquire | Keep. Core. | 1 (built) |
+| 1 | Visitors give name, phone, city before they enquire | Keep. Core. One step, no code for now; the phone code (SMS or WhatsApp) is added later. | 1 (built) |
 | 2 | Personal page: enquiries, delivery status, recommendations, order again | Keep. | 1 (built) |
 | 3 | Cart | Rename "My enquiry basket". No payment, since price is quoted. | 1 (built) |
 | 4 | Customers saved automatically | Keep. | 1 (built) |
@@ -37,7 +37,9 @@ Not yet researched in depth: WhatsApp template approval for offers (opt-in and m
 ## 3. Tasks and specifications
 
 ### Phase 1: customer experience and owner console (built in this repo)
-- **P1-1 Login with details.** Name, Indian mobile, city required; OTP by SMS; no password. Spec: number normalised to +91; returning customer re-confirms details; profile saved in `profiles`. Done in demo mode; live mode needs a Supabase project and an SMS provider.
+- **P1-1 Login with details.** Name, Indian mobile, city required, one tap, no password and no code. Spec: number normalised to +91; the browser keeps a private session (Supabase anonymous sign-in) so the customer returns to their own page on that device; profile saved in `profiles`. Trade-off: on a new device the customer enters details again and sees only new activity; the owner's customer list merges by mobile number. Adding a phone code later upgrades the same account without changing screens.
+- **P1-9 Owner sign-in.** Email and password, only for accounts marked owner. Customers can never reach the console.
+- **P1-10 Installable apps.** The owner console installs as an app on Android, Windows (Chrome or Edge: Install button) and iPhone/iPad (Safari: Share, Add to Home Screen). Same code, always up to date, no store review. Store listings (Apple App Store, Google Play, Microsoft Store) are optional wrappers around the same app and need developer accounts (Apple about US$99 a year, Google US$25 once); worth doing once phone alerts on new enquiries are added in phase 2.
 - **P1-2 Catalogue.** Materials from the database, grouped by category, no prices. Add-to-enquiry requires login (this is what guarantees every lead leaves details).
 - **P1-3 Enquiry basket.** Quantities in MT, free-text note, one Send button; stored in `enquiries` and `enquiry_items`.
 - **P1-4 Customer page.** Open enquiries with status, "on the way" banner, recommendations, past orders.
@@ -69,6 +71,7 @@ Quality calculator, rail and truck tracking, analytics.
 5. Which customers have agreed to receive offers (opt-in list).
 
 ## 5. Limits of this first build
-- Live Supabase login and database code is written but not tested against a real project; the demo mode was tested end to end in a browser.
+- Demo mode was tested end to end in a browser; live Supabase mode is deployed but still to be tested after the setup steps in the README.
+- Without a phone code, anyone who types a stranger's number creates an unverified profile. It cannot read anyone else's data, but the owner should treat unverified numbers as unconfirmed until the code step exists.
 - Offers open a ready message per customer rather than sending automatically.
 - Page text on the website is plain and has no photos yet.
