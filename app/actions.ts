@@ -39,9 +39,13 @@ export async function verifyOtp(prev: LoginState, fd: FormData): Promise<LoginSt
     const sb = await supabaseServer();
     const { data, error } = await sb.auth.verifyOtp({ phone, token: code, type: "sms" });
     if (error || !data.user) return { ...prev, error: "That code is not correct." };
-    await store.upsertCustomer({ id: data.user.id, phone, name, city });
-    const me = await store.getUser();
-    role = me?.role ?? "customer";
+    // Use this same client: it holds the new session, while a fresh client would still be anonymous.
+    const { data: existing } = await sb.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
+    const { error: pe } = existing
+      ? await sb.from("profiles").update({ phone, name, city }).eq("id", data.user.id)
+      : await sb.from("profiles").insert({ id: data.user.id, phone, name, city });
+    if (pe) return { ...prev, error: "Signed in, but we could not save your details. Please try again." };
+    role = existing?.role === "owner" ? "owner" : "customer";
   } else {
     if (code !== "123456") return { ...prev, error: "Demo code is 123456." };
     const u = await store.upsertCustomer({ phone, name, city });
