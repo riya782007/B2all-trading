@@ -1,45 +1,37 @@
 "use client";
-import { useState } from "react";
-import { sendOffer } from "@/app/actions";
-
-const TEMPLATES = [
-  { label: "Fresh stock", title: "Fresh stock available", body: "Fresh stock is available for immediate dispatch. Reply with the quantity you need and we will confirm today's rate.", code: "" },
-  { label: "Volume offer", title: "Better rate on larger orders", body: "Book 500 MT or more this month and get a special rate. Reply to this message and we will quote for you.", code: "BULK" },
-  { label: "Festive wishes", title: "Season's greetings from B2All", body: "Warm wishes from the whole B2All team. Plan your next supply with us and we will keep your plant running.", code: "" },
+import { useActionState, useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
+import { aiDraftOffer, sendOffer, type FormState } from "@/app/actions";
+type C = { id: string; name: string; city: string; hasEmail: boolean; hasPhone: boolean };
+const T = [
+  ["Fresh stock", "Fresh stock available", "Fresh stock is ready for immediate dispatch. Reply with the quantity you need and we will confirm today's rate."],
+  ["Bulk rate", "Better rate on larger orders", "Book 500 MT or more this month and get a special rate. Reply and we will quote for you."],
+  ["Festive wishes", "Season's greetings from B2All", "Warm wishes from the B2All team. Plan your next supply with us and we will keep your plant running."],
 ];
-type C = { id: string; name: string; city: string };
-
-export default function Composer({ customers }: { customers: C[] }) {
-  const [t, setT] = useState(TEMPLATES[0]);
-  const [pick, setPick] = useState<Set<string>>(new Set(customers.map((c) => c.id)));
-  const [all, setAll] = useState(true);
-  const toggle = (id: string) => { const n = new Set(pick); n.has(id) ? n.delete(id) : n.add(id); setPick(n); setAll(n.size === customers.length); };
+export default function Composer({ customers, ai, gmail }: { customers: C[]; ai: boolean; gmail: boolean }) {
+  const [title, setTitle] = useState(T[0][1]); const [body, setBody] = useState(T[0][2]);
+  const [to, setTo] = useState<Set<string>>(new Set(customers.map((c) => c.id))); const [channel, setChannel] = useState("whatsapp");
+  const [d, draft, drafting] = useActionState<FormState, FormData>(aiDraftOffer, {});
+  useEffect(() => { if (d.text) setBody(d.text); }, [d.text]);
   return (
-    <form action={sendOffer} className="mt-6 space-y-5">
-      <div>
-        <div className="mb-2 text-sm font-semibold text-muted">1. Choose a message</div>
-        <div className="flex flex-wrap gap-2">{TEMPLATES.map((x) => <button type="button" key={x.label} onClick={() => setT(x)} className={`btn !min-h-11 !py-2 ${x.label === t.label ? "btn-primary" : "btn-ghost"}`}>{x.label}</button>)}</div>
-        <input name="title" key={t.label + "t"} defaultValue={t.title} className="input mt-3 font-semibold" aria-label="Title" />
-        <textarea name="body" key={t.label + "b"} defaultValue={t.body} className="input mt-2 min-h-28" aria-label="Message" />
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <input name="code" key={t.label + "c"} defaultValue={t.code} placeholder="Voucher code (optional)" className="input" />
-          <input name="validTill" type="date" className="input" aria-label="Valid till" />
-        </div>
+    <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
+      <form action={sendOffer} className="card space-y-5 p-6">
+        <div><div className="mb-2 text-sm font-medium text-ink2">1 · Message</div>
+          <div className="mb-3 flex flex-wrap gap-2">{T.map(([l, t, b]) => <button type="button" key={l} className="filter" aria-current={title === t} onClick={() => { setTitle(t); setBody(b); }}>{l}</button>)}</div>
+          <input name="title" value={title} onChange={(e) => setTitle(e.target.value)} className="input font-medium" aria-label="Title" />
+          <textarea name="body" value={body} onChange={(e) => setBody(e.target.value)} className="input mt-2 min-h-32" aria-label="Message" />
+          <div className="mt-2 grid grid-cols-2 gap-2"><input name="code" placeholder="Voucher code (optional)" className="input" /><input name="valid_till" type="date" className="input" aria-label="Valid till" /></div></div>
+        <div><div className="mb-2 text-sm font-medium text-ink2">2 · Who gets it · {to.size} of {customers.length}</div>
+          <div className="mb-2 flex gap-2"><button type="button" className="btn btn-text btn-sm" onClick={() => setTo(new Set(customers.map((c) => c.id)))}>Everyone</button><button type="button" className="btn btn-text btn-sm" onClick={() => setTo(new Set())}>Nobody</button></div>
+          <div className="max-h-60 space-y-1 overflow-auto rounded-2xl border border-line p-2">{customers.map((c) => <label key={c.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-s2"><input type="checkbox" name="to" value={c.id} checked={to.has(c.id)} onChange={() => { const n = new Set(to); n.has(c.id) ? n.delete(c.id) : n.add(c.id); setTo(n); }} className="size-5 accent-[var(--pri)]" /><span className="flex-1">{c.name}</span><span className="text-sm text-ink2">{c.city}</span></label>)}</div></div>
+        <div><div className="mb-2 text-sm font-medium text-ink2">3 · How</div>
+          <div className="grid grid-cols-3 gap-2">{[["whatsapp", "WhatsApp"], ["email", gmail ? "Email (auto)" : "Email"], ["sms", "SMS"]].map(([k, l]) => <label key={k} className={`cursor-pointer rounded-2xl border p-3 text-center text-sm font-medium ${channel === k ? "border-transparent bg-pri-c text-on-pri-c" : "border-line"}`}><input type="radio" name="channel" value={k} checked={channel === k} onChange={() => setChannel(k)} className="sr-only" />{l}</label>)}</div></div>
+        <button className="btn btn-filled btn-lg w-full" disabled={!to.size || !body.trim()}>Send to {to.size} customer{to.size === 1 ? "" : "s"}</button>
+      </form>
+      <div className="space-y-4">
+        <div className="card p-5"><div className="mb-2 text-sm font-medium text-ink2">Preview</div><div className="rounded-2xl rounded-tl-sm bg-pri-c p-4 text-sm text-on-pri-c"><div className="font-medium">{title}</div><div className="mt-1 whitespace-pre-wrap">{body}</div><div className="mt-2 opacity-70">— B2All Commo</div></div></div>
+        {ai && <form action={draft} className="card-tonal space-y-2 p-5"><div className="flex items-center gap-2 font-medium"><Sparkles size={18} className="text-pri" />Write it for me</div><input name="idea" defaultValue={d.values?.idea} placeholder="e.g. 300 MT silico manganese ready this week" className="input" /><button className="btn btn-tonal w-full" disabled={drafting}>{drafting ? "Writing…" : "Draft message"}</button></form>}
       </div>
-      <div>
-        <div className="mb-2 text-sm font-semibold text-muted">2. Who gets it</div>
-        <label className="card flex items-center gap-3 p-3 font-semibold"><input type="checkbox" className="size-5" checked={all} onChange={(e) => { setAll(e.target.checked); setPick(new Set(e.target.checked ? customers.map((c) => c.id) : [])); }} /> All customers ({customers.length})</label>
-        <div className="mt-2 max-h-56 space-y-1 overflow-auto">
-          {customers.map((c) => <label key={c.id} className="flex items-center gap-3 rounded-lg px-3 py-2"><input type="checkbox" name="to" value={c.id} checked={pick.has(c.id)} onChange={() => toggle(c.id)} className="size-5" />{c.name}<span className="text-sm text-muted">{c.city}</span></label>)}
-        </div>
-      </div>
-      <div>
-        <div className="mb-2 text-sm font-semibold text-muted">3. How</div>
-        <div className="grid grid-cols-3 gap-2">
-          {["whatsapp", "email", "sms"].map((c, i) => <label key={c} className="card cursor-pointer p-3 text-center font-semibold has-[:checked]:border-brand2 has-[:checked]:bg-soft"><input type="radio" name="channel" value={c} defaultChecked={i === 0} className="sr-only" />{c === "sms" ? "SMS" : c === "whatsapp" ? "WhatsApp" : "Email"}</label>)}
-        </div>
-      </div>
-      <button className="btn btn-primary w-full" disabled={pick.size === 0}>Send to {pick.size} customer{pick.size === 1 ? "" : "s"}</button>
-    </form>
+    </div>
   );
 }

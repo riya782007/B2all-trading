@@ -1,32 +1,26 @@
-import Composer from "./composer";
-import { listCustomers, listOffers, offerRecipients } from "@/lib/store";
+import { Megaphone } from "lucide-react";
+import { staff } from "@/lib/auth";
+import { getStore } from "@/lib/store";
+import { hasAI, hasGmail } from "@/lib/integrations";
 import { mail, sms, wa } from "@/lib/links";
+import { Denied, Empty, Notice, Page, Section } from "@/components/ui";
+import Composer from "./composer";
 
-export default async function Offers({ searchParams }: { searchParams: Promise<{ sent?: string; channel?: string; error?: string }> }) {
-  const { sent, channel, error } = await searchParams;
-  const [customers, offers] = await Promise.all([listCustomers(), listOffers()]);
-  const offer = sent ? offers.find((o) => o.id === sent) : null;
-  const recipients = offer ? await offerRecipients(offer.id) : [];
-  const text = offer ? `${offer.title}\n\n${offer.body}${offer.code ? `\nVoucher: ${offer.code}` : ""}${offer.validTill ? `\nValid till ${offer.validTill}` : ""}\n\n— B2All Commo` : "";
-  const link = (c: { name: string; phone: string }) => channel === "sms" ? sms(c.phone, text) : channel === "email" ? mail("", offer!.title, text) : wa(c.phone, `Hello ${c.name.split(" ")[0]},\n\n${text}`);
-
+export default async function Offers({ searchParams }: { searchParams: Promise<{ sent?: string; channel?: string; mailed?: string; error?: string }> }) {
+  if (!(await staff("crm", "create"))) return <Denied />;
+  const sp = await searchParams; const s = await getStore();
+  const [parties, offers, sends] = await Promise.all([s.all("parties", { type: "customer" }), s.all("offers"), s.all("offer_sends")]);
+  const offer = sp.sent ? offers.find((o) => o.id === sp.sent) : null;
+  const rec = offer ? sends.filter((x) => x.offer_id === offer.id).map((x) => parties.find((p) => p.id === x.party_id)!).filter(Boolean) : [];
+  const text = offer ? `${offer.title}\n\n${offer.body}${offer.code ? `\nCode: ${offer.code}` : ""}${offer.valid_till ? `\nValid till ${offer.valid_till}` : ""}\n\n— B2All Commo` : "";
   return (
-    <>
-      <h1 className="font-display text-3xl font-semibold text-brand">Offers</h1>
-      {offer ? (
-        <div className="card mt-6 p-5">
-          <div className="font-display text-xl font-semibold text-brand">Offer saved for {recipients.length} customers</div>
-          <p className="mt-1 text-sm text-muted">Tap each name to open the message ready to send. Fully automatic sending to everyone at once switches on when the WhatsApp Business account is connected.</p>
-          <div className="mt-4 space-y-2">{recipients.map((c) => <a key={c.id} href={link(c)} target="_blank" rel="noreferrer" className="btn btn-ghost w-full !justify-between">{c.name}<span className="text-brand2">Open →</span></a>)}</div>
-        </div>
-      ) : (<>
-        {error && <p role="alert" className="mt-4 text-sm text-red-600">Pick a message and at least one customer.</p>}
-        <Composer customers={customers.map((c) => ({ id: c.id, name: c.name, city: c.city }))} />
-      </>)}
-      {offers.length > 0 && (<>
-        <h2 className="mb-3 mt-10 text-sm font-semibold uppercase tracking-wide text-muted">Sent before</h2>
-        <div className="space-y-2">{offers.map((o) => <div key={o.id} className="card p-4"><div className="font-semibold">{o.title}</div><div className="text-sm text-muted">Sent to {o.sentCount} customers{o.code ? ` · code ${o.code}` : ""}</div></div>)}</div>
-      </>)}
-    </>
+    <Page title="Offers" sub="Write once, send to everyone or a chosen few.">
+      {sp.error && <Notice tone="red">Write a message and pick at least one customer.</Notice>}
+      {offer ? (<>
+        <Notice>{sp.channel === "email" && Number(sp.mailed) > 0 ? `${sp.mailed} emails sent from your Gmail.` : `Offer saved for ${rec.length} customers. Tap each to send it from your phone.`}{sp.channel === "whatsapp" && " Fully automatic WhatsApp sending needs the WhatsApp Business API."}</Notice>
+        <div className="card divide-y divide-line">{rec.map((p) => { const href = sp.channel === "sms" ? sms(p.phone ?? "", text) : sp.channel === "email" ? mail(p.email ?? "", offer.title, text) : wa(p.phone ?? "", `Hello ${p.name},\n\n${text}`); return <a key={p.id} href={href} target="_blank" rel="noreferrer" className="flex items-center justify-between px-5 py-4 hover:bg-s2"><span className="font-medium">{p.name}</span><span className="text-sm font-medium text-pri">Open →</span></a>; })}</div>
+      </>) : <Composer customers={parties.map((p) => ({ id: p.id, name: p.name, city: p.city ?? "", hasEmail: !!p.email, hasPhone: !!p.phone }))} ai={hasAI} gmail={hasGmail} />}
+      <Section title="Sent before">{offers.length ? <div className="card divide-y divide-line">{offers.sort((a, b) => b.created_at.localeCompare(a.created_at)).map((o) => <div key={o.id} className="px-5 py-3"><div className="font-medium">{o.title}</div><div className="text-sm text-ink2">Sent to {sends.filter((x) => x.offer_id === o.id).length} customers{o.code ? ` · code ${o.code}` : ""}</div></div>)}</div> : <Empty icon={Megaphone} title="No offers yet" />}</Section>
+    </Page>
   );
 }

@@ -1,21 +1,23 @@
-# B2All Trade Desk
+# B2All
 
-Customer site plus owner console for B2 All Commo Trade Pvt. Ltd. Next.js 16, Supabase, Tailwind. Plan and feature list: [docs/PLAN.md](docs/PLAN.md).
+One product for B2 All Commo Trade Pvt. Ltd.:
+- **Website** for customers: catalogue, one-tap enquiry, and a personal page with buying insights, reorder prompts, delivery tracking, contracts to e-sign and GST invoices.
+- **Console** (installable app) for the team: enquiries → sales orders → contracts → dispatches → GST invoices → payments, purchase orders with part-by-part receipts and supplier-bill matching, stock, e-way bills, double-entry accounts (day book, ledgers, outstanding with ageing, trial balance, GST summary), Tally export, offers, and roles and permissions.
 
-## Try it now (demo mode, no accounts needed)
+## Run locally (demo data, no accounts)
 ```bash
-npm install
-npm run dev
+npm install && npm run dev
 ```
-Open http://localhost:3000. Any name, mobile and city work. The owner console is at /owner (one button in demo mode).
-Demo data is kept in memory and resets when the server restarts.
+Website: http://localhost:3000 (any name, mobile and city). Console: http://localhost:3000/owner (pick a person to see their role's view).
 
-## Go live
-1. Create a Supabase project (region: Mumbai). Run `supabase/schema.sql` in the SQL editor.
-2. Supabase → Authentication → Sign In / Providers → turn on **Allow anonymous sign-ins** (customers use this; no SMS needed yet).
-3. Supabase → Authentication → Users → **Add user** with the owner's email and a strong password (tick auto-confirm). Then run: `insert into profiles (id, phone, name, city, role) select id, '+91XXXXXXXXXX', 'Amit Gupta', 'Raigarh', 'owner' from auth.users where email = 'OWNER_EMAIL';`
-4. Copy `.env.example` to `.env.local` and fill the two Supabase values. Add the same values in Vercel → Project → Settings → Environment Variables.
-5. Import this repo into Vercel and deploy.
+## Live setup
+1. Supabase SQL editor: run `supabase/schema.sql`, then `supabase/002_erp.sql`.
+2. Supabase → Authentication: allow anonymous sign-ins (customers) and keep email sign-in on (team).
+3. Vercel env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Optional: `OPENAI_API_KEY` (offer writing), `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER` (emails from the company Gmail).
+4. Team: an owner adds people under Team and roles; each person opens /owner, chooses "First time here", and sets a password with that email.
 
-## Install as an app
-Open `/owner` on the device and use the Install button (Android, Windows) or Safari Share → Add to Home Screen (iPhone, iPad).
+## How it is built
+- `lib/store.ts`: six storage calls, backed by Supabase (live) or memory (demo and tests).
+- `lib/domain.ts`: all business rules: orders, part deliveries, GST invoices, vouchers, reports, stock, contracts, customer insights.
+- `lib/auth.ts` + `lib/perms.ts`: role checks on every page, action and export. Database row-level security keeps customers to their own records.
+- Money is plain arithmetic in code (rounded to paise). AI only drafts marketing text.
