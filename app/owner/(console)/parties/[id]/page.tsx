@@ -23,7 +23,7 @@ export default async function PartyPage({ params }: { params: Promise<{ id: stri
         <Link className="btn btn-outline" href={`/owner/parties/new?id=${p.id}&type=${p.type}`}><Pencil size={16} />Edit</Link>
         {allowed(me, p.type === "customer" ? "sales" : "purchase", "create") && <Link className="btn btn-filled" href={`/owner/orders/new?kind=${p.type === "customer" ? "sale" : "purchase"}&party=${p.id}`}><Plus size={18} />Order</Link>}
       </>}>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="statrow">
         <Stat label="Billed in total" value={inr(invs.reduce((t, i) => t + Number(i.total), 0))} hint={`${invs.length} ${p.type === "customer" ? "invoices" : "bills"}`} />
         <Stat label={p.type === "customer" ? "To receive" : "To pay"} value={inr(invs.reduce((t, i) => t + i.balance, 0))} tone={invs.some((i) => i.overdue) ? "err" : "ter"} hint={invs.some((i) => i.overdue) ? "Some are late" : "On time"} />
         <Stat label="Ledger balance" value={inr(Math.abs(bal))} hint={bal > 0 ? "Dr · they owe you" : bal < 0 ? "Cr · you owe them" : "Settled"} />

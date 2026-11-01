@@ -3,7 +3,7 @@ import { useActionState } from "react";
 import { signContract, type FormState } from "@/app/actions";
 export default function SignForm({ id, name }: { id: string; name: string }) {
   const [s, act, pending] = useActionState<FormState, FormData>(signContract.bind(null, id), {});
-  if (s.ok) return <div className="mt-4 rounded-3xl bg-pri-c p-5 font-medium text-on-pri-c">Signed. Thank you. A copy stays here under Documents.</div>;
+  if (s.ok) return <div className="mt-4 rounded-[14px] bg-ok-c p-5 font-medium text-on-ok-c">Signed. Thank you. A copy stays here under Documents.</div>;
   return (
     <form action={act} className="card mt-4 space-y-4 p-6">
       <div className="display text-lg font-medium">Sign this contract</div>

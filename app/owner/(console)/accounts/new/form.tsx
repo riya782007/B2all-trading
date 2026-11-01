@@ -22,7 +22,7 @@ export default function MoneyForm({ type, parties, invoices, expenseLedgers, pre
         <label className="field"><span>Amount (₹)</span><input name="amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} required className="input text-lg font-medium" /></label>
         <label className="field"><span>Date</span><input name="date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="input" /></label>
       </div>
-      <fieldset className="grid grid-cols-2 gap-2">{["Bank", "Cash"].map((m, i) => <label key={m} className="cursor-pointer rounded-2xl border border-line p-3 text-center font-medium has-[:checked]:border-transparent has-[:checked]:bg-pri-c has-[:checked]:text-on-pri-c"><input type="radio" name="mode" value={m} defaultChecked={i === 0} className="sr-only" />{m}</label>)}</fieldset>
+      <fieldset className="grid grid-cols-2 gap-2">{["Bank", "Cash"].map((m, i) => <label key={m} className="cursor-pointer rounded-xl border border-line p-3 text-center font-medium has-[:checked]:border-transparent has-[:checked]:bg-ink has-[:checked]:text-s1"><input type="radio" name="mode" value={m} defaultChecked={i === 0} className="sr-only" />{m}</label>)}</fieldset>
       {type !== "expense" && <label className="field"><span>Note (optional)</span><input name="narration" className="input" placeholder="UTR / cheque number" /></label>}
       {s.error && <p role="alert" className="text-sm font-medium text-err">{s.error}</p>}
       <button className="btn btn-filled btn-lg" disabled={pending}>{pending ? "Posting…" : "Post voucher"}</button>

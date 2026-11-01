@@ -5,6 +5,7 @@ import { staff, allowed } from "@/lib/auth";
 import { getStore } from "@/lib/store";
 import { SideNav, MobileNav, CreateMenu, type NavGroup } from "@/components/console/Nav";
 import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 import InstallApp from "@/components/InstallApp";
 import { signOut } from "@/app/actions";
 
@@ -40,30 +41,30 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   const initials = me.profile.name.split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div className="min-h-screen lg:flex">
-      <aside className="noprint sticky top-0 hidden h-screen w-64 shrink-0 overflow-y-auto px-3 py-4 lg:block">
-        <Link href="/owner" className="mb-6 flex items-center gap-2 px-4"><span className="grid size-8 place-items-center rounded-xl bg-pri text-sm font-bold text-on-pri">B2</span><span className="display text-xl font-semibold">B2All</span></Link>
+      <aside className="noprint sticky top-0 hidden h-screen w-[248px] shrink-0 overflow-y-auto bg-rail px-3 pb-6 pt-5 lg:block">
+        <Link href="/owner" className="mb-8 flex items-center px-2" aria-label="Console home"><Logo tone="light" /></Link>
         <SideNav groups={groups} />
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="noprint sticky top-0 z-20 flex h-16 items-center gap-2 bg-bg/90 px-3 backdrop-blur sm:px-5">
+        <header className="noprint sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-line bg-bg/90 px-3 backdrop-blur sm:px-6 lg:px-8">
           <MobileNav groups={groups} />
           <form action="/owner/search" className="relative max-w-xl flex-1">
             <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink2" />
-            <input name="q" placeholder="Search customers, orders, bills, vehicles" aria-label="Search" className="h-11 w-full rounded-full bg-s2 pl-11 pr-4 text-[.95rem] outline-none placeholder:text-ink2 focus:bg-s1 focus:shadow-[0_0_0_1px_var(--pri)]" />
+            <input name="q" placeholder="Search customers, orders, bills, vehicles" aria-label="Search" className="h-10 w-full rounded-lg border border-line bg-s1 pl-11 pr-4 text-[.95rem] outline-none placeholder:text-ink2 focus:border-ink focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--act)_55%,transparent)]" />
           </form>
           <div className="ml-auto flex items-center gap-1">
             <CreateMenu items={create} />
             <ThemeToggle />
             <div className="group relative">
-              <button className="grid size-10 place-items-center rounded-full bg-pri-c text-sm font-semibold text-on-pri-c" aria-label={`Signed in as ${me.profile.name}`}>{initials}</button>
-              <div className="invisible absolute right-0 z-40 mt-2 w-60 rounded-2xl border border-line bg-s1 p-3 opacity-0 shadow-xl transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+              <button className="grid size-10 place-items-center rounded-lg bg-ink text-sm font-bold text-s1" aria-label={`Signed in as ${me.profile.name}`}>{initials}</button>
+              <div className="invisible absolute right-0 z-40 mt-2 w-60 rounded-xl border border-line bg-s1 p-3 opacity-0 shadow-[var(--shadow)] transition group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
                 <div className="px-2 font-medium">{me.profile.name}</div><div className="px-2 text-sm text-ink2">{me.profile.role === "owner" ? "Owner" : me.role?.name}</div>
                 <form action={signOut} className="mt-2"><button className="btn btn-text w-full !justify-start"><LogOut size={16} />Sign out</button></form>
               </div>
             </div>
           </div>
         </header>
-        <main className="px-4 pb-24 pt-4 sm:px-6 lg:px-8"><InstallApp />{children}</main>
+        <main className="px-4 pb-24 pt-8 sm:px-6 lg:px-10"><InstallApp />{children}</main>
       </div>
     </div>
   );

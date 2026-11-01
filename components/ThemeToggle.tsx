@@ -17,7 +17,7 @@ export default function ThemeToggle() {
   };
   const Icon = t === "dark" ? Moon : t === "light" ? Sun : Monitor;
   return (
-    <button onClick={next} className="grid size-10 place-items-center rounded-full text-ink2 hover:bg-s3" aria-label={`Theme: ${t}. Change theme`} title={`Theme: ${t}`}>
+    <button onClick={next} className="grid size-10 place-items-center rounded-lg text-ink2 hover:bg-s2 hover:text-ink" aria-label={`Theme: ${t}. Change theme`} title={`Theme: ${t}`}>
       <Icon size={20} />
     </button>
   );

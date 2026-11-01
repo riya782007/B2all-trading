@@ -23,7 +23,7 @@ export default function BasketView({ materials }: { materials: M[] }) {
     <div className="card flex flex-col items-center p-10 text-center"><CircleCheck size={48} className="text-pri" /><h1 className="mt-4 text-3xl font-medium">Enquiry sent</h1><p className="mt-2 text-ink2">We will come back with a quote. Follow it from your page.</p><Link href="/account" className="btn btn-filled btn-lg mt-6">Go to my page</Link></div>
   );
   return (<>
-    <h1 className="text-[2.2rem] font-semibold">My enquiry</h1>
+    <h1 className="text-[2.4rem]">My enquiry</h1>
     {!ids.length ? <div className="card-tonal mt-6 p-10 text-center text-ink2">Nothing here yet. <Link href="/#materials" className="font-medium text-pri underline">Pick materials</Link></div> : (
       <div className="mt-6 space-y-3">
         {ids.map((id) => { const m = materials.find((x) => x.id === id)!; return (

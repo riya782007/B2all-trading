@@ -24,7 +24,7 @@ export default async function Home() {
   const hour = new Date().getHours();
   return (
     <Page title={`Good ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}, ${me.profile.name.split(" ")[0]}`} sub={tasks.length ? `${tasks.length} things need you today.` : "Everything is up to date."}>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="statrow">
         <Stat label={`Sales this year (${f})`} value={inr(salesFY)} hint="before GST" tone="pri" href="/owner/invoices?kind=sale" />
         <Stat label="To receive" value={inr(rec.total)} hint={`${rec.rows.length} invoices`} href="/owner/accounts/outstanding" />
         <Stat label="To pay" value={inr(pay.total)} hint={`${pay.rows.length} bills`} href="/owner/accounts/outstanding?kind=purchase" />

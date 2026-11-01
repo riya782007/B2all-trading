@@ -16,7 +16,7 @@ export default async function Team() {
     <Page title="Team and roles" sub="Owners can do everything. Everyone else sees only what their role allows, on every screen and every action.">
       <div className="card divide-y divide-line">{team.map((p) => (
         <div key={p.id} className="flex flex-wrap items-center gap-3 px-5 py-4">
-          <span className="grid size-10 place-items-center rounded-full bg-pri-c font-medium text-on-pri-c">{p.name.charAt(0)}</span>
+          <span className="grid size-10 place-items-center rounded-lg bg-ink font-semibold text-s1">{p.name.charAt(0)}</span>
           <div className="mr-auto"><div className="font-medium">{p.name}{p.id === me.profile.id && <span className="font-normal text-ink2"> (you)</span>}</div><div className="text-sm text-ink2">{p.email ?? ""}</div></div>
           {p.role === "owner" ? <Chip tone="green">Owner</Chip> : edit ? <form action={setStaffRole.bind(null, p.id)} className="flex gap-2"><select name="role_id" defaultValue={p.staff_role_id ?? ""} className="input !h-10 w-48 text-sm" aria-label={`Role for ${p.name}`}>{roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}<option value="remove">Remove access</option></select><button className="btn btn-outline">Save</button></form> : <Chip>{roles.find((r) => r.id === p.staff_role_id)?.name}</Chip>}
         </div>))}

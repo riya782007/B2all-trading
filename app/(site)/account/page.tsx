@@ -28,33 +28,33 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-[2.4rem] font-semibold leading-tight">Hi, {first}</h1><p className="text-ink2">{[me.profile.company, me.profile.city].filter(Boolean).join(" · ")}</p></div>
+        <div><h1 className="text-[2.6rem]">Hi, {first}</h1><p className="mt-1 text-ink2">{[me.profile.company, me.profile.city].filter(Boolean).join(", ")}</p></div>
         <Link href="/#materials" className="btn btn-filled">New enquiry</Link>
       </div>
       <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-line" aria-label="Account sections">
-        {TABS.map(([k, l]) => <Link key={k} href={`/account?tab=${k}`} aria-current={tab === k ? "page" : undefined} className={`-mb-px border-b-[3px] px-4 pb-3 pt-2 text-sm font-medium ${tab === k ? "border-pri text-pri" : "border-transparent text-ink2 hover:text-ink"}`}>{l}{k === "documents" && toSign.length ? <span className="chip chip-amber ml-2 !h-5 !px-2">{toSign.length}</span> : null}</Link>)}
+        {TABS.map(([k, l]) => <Link key={k} href={`/account?tab=${k}`} aria-current={tab === k ? "page" : undefined} className={`-mb-px border-b-[3px] px-4 pb-3 pt-2 text-sm font-semibold ${tab === k ? "border-act text-ink" : "border-transparent text-ink2 hover:text-ink"}`}>{l}{k === "documents" && toSign.length ? <span className="chip chip-amber ml-2 !h-5 !px-2">{toSign.length}</span> : null}</Link>)}
       </nav>
 
       {toSign.length > 0 && tab !== "documents" && (
-        <Link href={`/account/contracts/${toSign[0].id}`} className="mt-6 flex items-center gap-4 rounded-3xl bg-ter-c p-5 text-on-ter-c"><FileSignature size={26} /><div className="flex-1"><div className="font-medium">Contract {toSign[0].number} is waiting for your signature</div><div className="text-sm opacity-80">Review and sign in under a minute.</div></div><span className="btn btn-filled">Review</span></Link>
+        <Link href={`/account/contracts/${toSign[0].id}`} className="mt-6 flex items-center gap-4 rounded-[14px] bg-rail p-5 text-white"><FileSignature size={26} /><div className="flex-1"><div className="font-medium">Contract {toSign[0].number} is waiting for your signature</div><div className="text-sm text-rail-ink">Review and sign in under a minute.</div></div><span className="btn btn-filled">Review</span></Link>
       )}
 
       {tab === "overview" && (<div className="mt-6 space-y-6">
         {!ins || !ins.orders.length ? <Empty icon={Sparkles} title="Your buying story starts here">Once you place orders, you'll see what you buy most, how often, and when you're likely to need more.</Empty> : (<>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="statrow">
             <Card icon={TrendingUp} label="Bought this year" value={inr(ins.spendFY)} hint={`${ins.orders.length} orders`} />
             <Card icon={Package} label="Your top material" value={ins.top?.m.name ?? "-"} hint={ins.top ? `${num(ins.top.qty)} ${ins.top.m.unit} so far` : ""} />
             <Card icon={Repeat} label="You usually order" value={ins.avgGap ? `every ${ins.avgGap} days` : "-"} hint={ins.nextExpected ? `Next likely around ${sdate(ins.nextExpected)}` : "Order again to see your rhythm"} />
             <Card icon={Truck} label="Typical order" value={`${num(ins.avgOrder)} ${ins.top?.m.unit ?? "MT"}`} hint={ins.outstanding > 0 ? `${inr(ins.outstanding)} to pay` : "Nothing due"} />
           </div>
           {ins.top && ins.nextExpected && (
-            <div className="flex flex-wrap items-center gap-4 rounded-3xl bg-pri-c p-5 text-on-pri-c"><Repeat size={24} /><div className="flex-1"><div className="font-medium">Time to restock {ins.top.m.name}?</div><div className="text-sm opacity-80">Based on your last orders, you usually need about {num(ins.avgOrder)} {ins.top.m.unit} around {sdate(ins.nextExpected)}.</div></div><Link href={`/basket?add=${ins.top.m.id}&qty=${Math.round(ins.avgOrder)}`} className="btn btn-filled">Reorder</Link></div>)}
+            <div className="flex flex-wrap items-center gap-4 rounded-[14px] bg-act/25 p-5 ring-1 ring-act"><Repeat size={24} /><div className="flex-1"><div className="font-medium">Time to restock {ins.top.m.name}?</div><div className="text-sm opacity-80">Based on your last orders, you usually need about {num(ins.avgOrder)} {ins.top.m.unit} around {sdate(ins.nextExpected)}.</div></div><Link href={`/basket?add=${ins.top.m.id}&qty=${Math.round(ins.avgOrder)}`} className="btn btn-filled">Reorder</Link></div>)}
           <div className="grid gap-3 lg:grid-cols-2">
-            <div className="card p-5"><h2 className="text-lg font-medium">What you buy</h2><div className="mt-4 space-y-3">{ins.byMat.map((x) => <div key={x.m.id}><div className="mb-1 flex justify-between text-sm"><span>{x.m.name}</span><span className="text-ink2">{num(x.qty)} {x.m.unit} · {Math.round((x.qty / ins.totalQty) * 100)}%</span></div><Bar pct={(x.qty / ins.totalQty) * 100} /></div>)}</div></div>
-            <div className="card p-5"><h2 className="text-lg font-medium">Last six months</h2><div className="mt-4 flex h-40 items-end gap-3" role="img" aria-label="Quantity ordered per month">{ins.monthly.map((m) => <div key={m.mo} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="w-full rounded-t-lg bg-pri/80" style={{ height: `${(m.qty / maxM) * 85}%`, minHeight: m.qty ? 6 : 2 }} title={`${num(m.qty)}`} /><span className="text-xs text-ink2">{new Date(m.mo + "-01").toLocaleDateString("en-IN", { month: "short" })}</span></div>)}</div></div>
+            <div className="card p-5"><h2 className="text-[1.15rem]">What you buy</h2><div className="mt-4 space-y-3">{ins.byMat.map((x) => <div key={x.m.id}><div className="mb-1 flex justify-between text-sm"><span>{x.m.name}</span><span className="text-ink2">{num(x.qty)} {x.m.unit} · {Math.round((x.qty / ins.totalQty) * 100)}%</span></div><Bar pct={(x.qty / ins.totalQty) * 100} /></div>)}</div></div>
+            <div className="card p-5"><h2 className="text-[1.15rem]">Last six months</h2><div className="mt-5 flex h-40 items-end gap-3" role="img" aria-label="Quantity ordered per month">{ins.monthly.map((m) => <div key={m.mo} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="w-full rounded-t-[4px] bg-ink/85" style={{ height: `${(m.qty / maxM) * 85}%`, minHeight: m.qty ? 6 : 2 }} title={`${num(m.qty)}`} /><span className="text-xs text-ink2">{new Date(m.mo + "-01").toLocaleDateString("en-IN", { month: "short" })}</span></div>)}</div></div>
           </div>
         </>)}
-        {ins && ins.recs.length > 0 && (<section><h2 className="mb-3 text-lg font-medium">You may also need</h2><div className="grid gap-3 sm:grid-cols-3">{ins.recs.map((m) => <Link key={m.id} href={`/basket?add=${m.id}`} className="card p-5 hover:shadow-[var(--shadow)]"><div className="display font-medium">{m.name}</div><div className="text-sm text-ink2">{m.category}</div><div className="mt-3 text-sm font-medium text-pri">Add to enquiry →</div></Link>)}</div></section>)}
+        {ins && ins.recs.length > 0 && (<section><h2 className="mb-3 text-lg font-medium">You may also need</h2><div className="grid gap-3 sm:grid-cols-3">{ins.recs.map((m) => <Link key={m.id} href={`/basket?add=${m.id}`} className="card p-5 hover:shadow-[var(--shadow)]"><div className="display font-medium">{m.name}</div><div className="text-sm text-ink2">{m.category}</div><div className="mt-3 text-sm font-semibold text-pri">Add to enquiry</div></Link>)}</div></section>)}
         {openEnq.length > 0 && (<section><h2 className="mb-3 text-lg font-medium">Open enquiries</h2><div className="space-y-2">{openEnq.map((e) => <div key={e.id} className="card flex flex-wrap items-center justify-between gap-2 p-4"><span>{items.filter((i) => i.enquiry_id === e.id).map((i) => `${num(i.qty)} ${i.unit} ${mats.find((m) => m.id === i.material_id)?.name}`).join(", ")}</span><Chip tone={e.status === "quoted" ? "blue" : "amber"}>{e.status === "quoted" ? "Quoted" : "Sent"} · {sdate(e.created_at)}</Chip></div>)}</div></section>)}
       </div>)}
 
@@ -77,5 +77,5 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   );
 }
 function Card({ icon: Icon, label, value, hint }: { icon: typeof TrendingUp; label: string; value: string; hint?: string }) {
-  return <div className="card p-5"><div className="flex items-center gap-2 text-sm text-ink2"><Icon size={16} />{label}</div><div className="display mt-2 text-xl font-medium leading-tight sm:text-2xl">{value}</div>{hint && <div className="mt-1 text-sm text-ink2">{hint}</div>}</div>;
+  return <div className="p-5"><div className="flex items-center gap-2 text-sm font-semibold text-ink2"><Icon size={16} />{label}</div><div className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl" style={{ fontStretch: "112%" }}>{value}</div>{hint && <div className="mt-1 text-sm text-ink2">{hint}</div>}</div>;
 }

@@ -19,11 +19,11 @@ export default function InstallApp() {
   }, []);
   if (installed || (!evt && !ios)) return null;
   return (
-    <div className="card mb-5 flex flex-wrap items-center justify-between gap-3 bg-soft p-4">
-      <div><div className="font-semibold">Install B2All on this device</div><div className="text-sm text-muted">Opens like an app, one tap from your home screen.</div></div>
-      {evt ? <button className="btn btn-primary !min-h-11 !py-2" onClick={() => evt.prompt()}>Install</button>
-        : <button className="btn btn-ghost !min-h-11 !py-2" onClick={() => setOpen(!open)}>How</button>}
-      {open && <p className="w-full text-sm text-muted">Tap the Share button in Safari, then “Add to Home Screen”.</p>}
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-s1 p-4">
+      <div><div className="font-semibold">Install B2All on this device</div><div className="text-sm text-ink2">Opens like an app, one tap from your home screen.</div></div>
+      {evt ? <button className="btn btn-filled" onClick={() => evt.prompt()}>Install</button>
+        : <button className="btn btn-outline" onClick={() => setOpen(!open)}>How</button>}
+      {open && <p className="w-full text-sm text-ink2">Tap the Share button in Safari, then “Add to Home Screen”.</p>}
     </div>
   );
 }

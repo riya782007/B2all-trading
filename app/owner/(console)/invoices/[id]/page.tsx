@@ -19,7 +19,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   return (
     <div className="mx-auto max-w-3xl">
       <div className="noprint mb-4 flex flex-wrap items-center gap-2">
-        <Link href={`/owner/invoices?kind=${inv.kind}`} className="btn btn-text btn-sm -ml-3 mr-auto">← {inv.kind === "sale" ? "Invoices" : "Supplier bills"}</Link>
+        <Link href={`/owner/invoices?kind=${inv.kind}`} className="mr-auto text-sm font-semibold text-ink2 hover:text-ink">Back to {inv.kind === "sale" ? "invoices" : "supplier bills"}</Link>
         <Chip tone={inv.status === "paid" ? "green" : inv.overdue ? "red" : "amber"}>{inv.status === "paid" ? "Paid" : `Balance ${inr(inv.balance)}`}</Chip>
         {inv.balance > 0 && allowed(me, "accounts", "create") && <Link href={`/owner/accounts/new?type=${inv.kind === "sale" ? "receipt" : "payment"}&party=${inv.party_id}&invoice=${inv.id}&amount=${inv.balance}`} className="btn btn-tonal"><Wallet size={18} />{inv.kind === "sale" ? "Record payment" : "Pay"}</Link>}
         {inv.kind === "sale" && inv.party.phone && <a href={wa(inv.party.phone, text)} target="_blank" rel="noreferrer" className="btn btn-outline"><MessageCircle size={18} />WhatsApp</a>}
