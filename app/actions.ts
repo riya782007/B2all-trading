@@ -35,6 +35,10 @@ export async function customerLogin(prev: FormState, fd: FormData): Promise<Form
   if (hasSupabase) {
     const sb = await supabaseServer();
     let { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      const cur = await s.one("profiles", user.id);
+      if (cur && cur.role !== "customer") { await sb.auth.signOut(); user = null; } // an owner or staff session: start a separate customer session
+    }
     if (!user) { const r = await sb.auth.signInAnonymously(); if (r.error || !r.data.user) return { error: "Sign-in is not available right now. Please try again shortly.", values }; user = r.data.user; }
     id = user.id;
     const existing = await s.one("profiles", id);

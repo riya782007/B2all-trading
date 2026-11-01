@@ -36,12 +36,19 @@ function memoryStore(): Store {
 function supabaseStore(): Store {
   return {
     async all(t, m) {
+      // Supabase returns at most 1000 rows per request, so read in pages. Without this, reports would
+      // silently drop vouchers once the books pass 1000 entries.
       const sb = await supabaseServer();
-      let q = sb.from(t).select("*");
-      for (const [k, v] of Object.entries(m ?? {})) q = q.eq(k, v as string);
-      const { data, error } = await q.limit(10000);
-      if (error) throw new Error(`${t}: ${error.message}`);
-      return (data ?? []) as Tables[typeof t][];
+      const PAGE = 1000, out: Tables[typeof t][] = [];
+      for (let from = 0; ; from += PAGE) {
+        let q = sb.from(t).select("*");
+        for (const [k, v] of Object.entries(m ?? {})) q = q.eq(k, v as string);
+        const { data, error } = await q.order("id").range(from, from + PAGE - 1);
+        if (error) throw new Error(`${t}: ${error.message}`);
+        out.push(...((data ?? []) as Tables[typeof t][]));
+        if (!data || data.length < PAGE) break;
+      }
+      return out;
     },
     async one(t, id) { const sb = await supabaseServer(); const { data } = await sb.from(t).select("*").eq("id", id).maybeSingle(); return data as Tables[typeof t] | null; },
     async insert(t, row) { const sb = await supabaseServer(); const { data, error } = await sb.from(t).insert(row as never).select("*").single(); if (error) throw new Error(`${t}: ${error.message}`); return data as Tables[typeof t]; },
