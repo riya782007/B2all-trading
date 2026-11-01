@@ -11,7 +11,7 @@ npm install && npm run dev
 Website: http://localhost:3000 (any name, mobile and city). Console: http://localhost:3000/owner (pick a person to see their role's view).
 
 ## Live setup
-1. Supabase SQL editor: run `supabase/schema.sql`, then `supabase/002_erp.sql`.
+1. Supabase SQL editor: run `supabase/schema.sql`, `002_erp.sql`, `003_security.sql` and `004_fixes.sql` in order (already done on the live project).
 2. Supabase → Authentication: allow anonymous sign-ins (customers) and keep email sign-in on (team).
 3. Vercel env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Optional: `OPENAI_API_KEY` (offer writing), `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER` (emails from the company Gmail).
 4. Team: an owner adds people under Team and roles; each person opens /owner, chooses "First time here", and sets a password with that email.
