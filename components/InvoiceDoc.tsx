@@ -3,10 +3,13 @@ import type { Company } from "@/lib/types";
 import type { InvoiceView } from "@/lib/domain";
 
 /** Printable GST tax invoice. Same layout for the console and the customer page. */
-export default function InvoiceDoc({ inv, co, vehicles }: { inv: InvoiceView; co: Company; vehicles: string[] }) {
+export default function InvoiceDoc({ inv, co: currentCompany, vehicles }: { inv: InvoiceView; co: Company; vehicles: string[] }) {
+  const co = inv.company_snapshot ?? currentCompany;
+  const party = inv.party_snapshot ?? inv.party;
+  const material = inv.material_snapshot ?? inv.material;
   const sale = inv.kind === "sale";
-  const seller = sale ? { name: co.name, gstin: co.gstin, addr: co.address } : { name: inv.party.name, gstin: inv.party.gstin, addr: inv.party.address || inv.party.city };
-  const buyer = sale ? { name: inv.party.name, gstin: inv.party.gstin, addr: inv.party.address || inv.party.city } : { name: co.name, gstin: co.gstin, addr: co.address };
+  const seller = sale ? { name: co.name, gstin: co.gstin, addr: co.address } : { name: party.name, gstin: party.gstin, addr: party.address || party.city };
+  const buyer = sale ? { name: party.name, gstin: party.gstin, addr: party.address || party.city } : { name: co.name, gstin: co.gstin, addr: co.address };
   const rows: [string, number][] = [["Taxable value", inv.taxable], ...(inv.igst ? [[`IGST @ ${inv.gst_rate}%`, inv.igst] as [string, number]] : [[`CGST @ ${inv.gst_rate / 2}%`, inv.cgst] as [string, number], [`SGST @ ${inv.gst_rate / 2}%`, inv.sgst] as [string, number]])];
   return (
     <article className="card mx-auto max-w-3xl p-6 sm:p-10 print:p-0">
@@ -19,7 +22,7 @@ export default function InvoiceDoc({ inv, co, vehicles }: { inv: InvoiceView; co
         <div className="text-sm sm:text-right"><div><span className="text-ink2">Place of supply:</span> {STATES[inv.place_of_supply] ?? inv.place_of_supply} ({inv.place_of_supply})</div><div><span className="text-ink2">Order:</span> {inv.order?.number}</div>{vehicles.length > 0 && <div><span className="text-ink2">Vehicles:</span> {vehicles.join(", ")}</div>}</div>
       </div>
       <table className="tbl my-4"><thead><tr><th>Description</th><th>HSN</th><th className="num">Qty</th><th className="num">Rate</th><th className="num">Amount</th></tr></thead>
-        <tbody><tr><td className="font-medium">{inv.material?.name}</td><td>{inv.material?.hsn}</td><td className="num">{num(inv.qty)} {inv.material?.unit}</td><td className="num">{inr(inv.rate, 2)}</td><td className="num">{inr(inv.taxable, 2)}</td></tr></tbody></table>
+        <tbody><tr><td className="font-medium">{material?.name}</td><td>{material?.hsn}</td><td className="num">{num(inv.qty)} {material?.unit}</td><td className="num">{inr(inv.rate, 2)}</td><td className="num">{inr(inv.taxable, 2)}</td></tr></tbody></table>
       <div className="ml-auto max-w-xs space-y-1 text-sm">{rows.map(([l, v]) => <div key={l} className="flex justify-between"><span className="text-ink2">{l}</span><span className="tabular-nums">{inr(v, 2)}</span></div>)}<div className="flex justify-between border-t border-line pt-2 text-base font-semibold"><span>Total</span><span className="tabular-nums">{inr(inv.total, 2)}</span></div></div>
       <p className="mt-4 text-sm"><span className="text-ink2">In words:</span> {words(inv.total)}</p>
       {sale && co.bank && <p className="mt-2 text-sm"><span className="text-ink2">Bank:</span> {co.bank}</p>}

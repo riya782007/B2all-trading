@@ -1,18 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 type BIP = Event & { prompt: () => Promise<void> };
 
 /** Registers the service worker and offers a one-tap install (Android, Windows) or iPhone instructions. */
+const subscribeInstalled = (cb: () => void) => { const media = window.matchMedia("(display-mode: standalone)"); media.addEventListener("change",cb); return () => media.removeEventListener("change",cb); };
 export default function InstallApp() {
   const [evt, setEvt] = useState<BIP | null>(null);
-  const [ios, setIos] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const installed = useSyncExternalStore(subscribeInstalled, () => window.matchMedia("(display-mode: standalone)").matches, () => false);
+  const ios = useSyncExternalStore(subscribeInstalled, () => /iPad|iPhone|iPod/.test(navigator.userAgent), () => false);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
-    setInstalled(window.matchMedia("(display-mode: standalone)").matches);
-    setIos(/iPad|iPhone|iPod/.test(navigator.userAgent));
     const h = (e: Event) => { e.preventDefault(); setEvt(e as BIP); };
     window.addEventListener("beforeinstallprompt", h);
     return () => window.removeEventListener("beforeinstallprompt", h);

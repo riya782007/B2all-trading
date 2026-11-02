@@ -1,5 +1,6 @@
 import "server-only";
 import { hasSupabase, supabaseServer } from "./supabase";
+import type { InvoiceInput, VoucherInput } from "./domain";
 import type { Table, Tables } from "./types";
 
 /** One tiny storage interface. Business logic lives in domain.ts and only uses these six calls,
@@ -11,6 +12,8 @@ export interface Store {
   update<T extends Table>(t: T, id: string, patch: Partial<Tables[T]>): Promise<void>;
   remove<T extends Table>(t: T, id: string): Promise<void>;
   next(kind: string): Promise<number>;
+  postVoucher?(input: VoucherInput): Promise<Tables["vouchers"]>;
+  postInvoice?(input: InvoiceInput): Promise<Tables["invoices"]>;
 }
 
 type Mem = { rows: { [K in Table]?: Tables[K][] }; counters: Record<string, number>; seeded?: Promise<void> };
@@ -35,6 +38,17 @@ function memoryStore(): Store {
 
 function supabaseStore(): Store {
   return {
+    async postVoucher(input) {
+      const sb = await supabaseServer(); const {data,error} = await sb.rpc("post_balanced_voucher",{input});
+      if (error) throw new Error(error.code === "PGRST202" ? "The accounting database update must be installed before posting." : error.message);
+      return data as Tables["vouchers"];
+    },
+    async postInvoice(input) {
+      const sb = await supabaseServer();
+      const { data, error } = await sb.rpc("post_matched_invoice", { input });
+      if (error) throw new Error(error.code === "PGRST202" ? "Bill matching update needs to be installed in the database. No bill was posted." : error.message);
+      return data as Tables["invoices"];
+    },
     async all(t, m) {
       // Supabase returns at most 1000 rows per request, so read in pages. Without this, reports would
       // silently drop vouchers once the books pass 1000 entries.
@@ -50,7 +64,7 @@ function supabaseStore(): Store {
       }
       return out;
     },
-    async one(t, id) { const sb = await supabaseServer(); const { data } = await sb.from(t).select("*").eq("id", id).maybeSingle(); return data as Tables[typeof t] | null; },
+    async one(t, id) { const sb = await supabaseServer(); const { data, error } = await sb.from(t).select("*").eq("id", id).maybeSingle(); if (error) throw new Error(`${t}: ${error.message}`); return data as Tables[typeof t] | null; },
     async insert(t, row) { const sb = await supabaseServer(); const { data, error } = await sb.from(t).insert(row as never).select("*").single(); if (error) throw new Error(`${t}: ${error.message}`); return data as Tables[typeof t]; },
     async update(t, id, patch) { const sb = await supabaseServer(); const { error } = await sb.from(t).update(patch as never).eq("id", id); if (error) throw new Error(`${t}: ${error.message}`); },
     async remove(t, id) { const sb = await supabaseServer(); const { error } = await sb.from(t).delete().eq("id", id); if (error) throw new Error(`${t}: ${error.message}`); },

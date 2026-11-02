@@ -28,13 +28,14 @@ export type Contract = {
 export type Invoice = {
   id: string; number: string; kind: Kind; party_id: string; order_id: string; date: string; due_date: string; material_id: string;
   qty: number; rate: number; gst_rate: number; taxable: number; cgst: number; sgst: number; igst: number; total: number;
-  delivery_ids: string[]; place_of_supply: string; voucher_id?: string | null; created_at: string;
+  company_snapshot?: Company; party_snapshot?: Party; material_snapshot?: Pick<Material,"name"|"hsn"|"unit">;
+  delivery_ids: string[]; delivery_quantities?: Record<string, number>; request_id?: string; place_of_supply: string; voucher_id?: string | null; created_at: string;
 };
 export type VType = "sales" | "purchase" | "receipt" | "payment" | "journal" | "contra";
 export type Entry = { ledger_id: string; dr: number; cr: number };
 export type Voucher = {
   id: string; number: string; type: VType; date: string; party_id?: string | null; invoice_id?: string | null; narration: string;
-  entries: Entry[]; amount: number; created_by: string; created_at: string; tally_exported: boolean;
+  request_id?: string; entries: Entry[]; amount: number; created_by: string; created_at: string; tally_exported: boolean;
 };
 export type LedgerGroup = "Sundry Debtors" | "Sundry Creditors" | "Sales Accounts" | "Purchase Accounts" | "Duties & Taxes" | "Bank Accounts" | "Cash-in-Hand" | "Direct Expenses" | "Indirect Expenses" | "Capital Account" | "Indirect Incomes";
 export type Ledger = { id: string; name: string; grp: LedgerGroup; party_id?: string | null; opening: number };

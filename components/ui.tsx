@@ -16,7 +16,7 @@ export function Page({ title, sub, actions, children, back }: { title: React.Rea
 }
 export function Stat({ label, value, hint, tone = "ink", href, icon: Icon }: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: "ink" | "pri" | "ter" | "err"; href?: string; icon?: LucideIcon }) {
   const c = { ink: "text-ink", pri: "text-pri", ter: "text-ter", err: "text-err" }[tone];
-  const body = (<div className={`h-full px-5 py-5 ${href ? "transition-colors hover:bg-s2" : ""}`}><div className="flex items-center justify-between text-[.85rem] font-semibold text-ink2"><span>{label}</span>{Icon && <Icon size={17} />}</div><div className={`mt-3 text-[1.85rem] font-extrabold leading-none ${c}`} style={{ fontStretch: "112%" }}>{value}</div>{hint && <div className="mt-2 text-sm text-ink2">{hint}</div>}</div>);
+  const body = (<div className={`h-full px-5 py-5 ${href ? "transition-colors hover:bg-s2" : ""}`}><div className="flex items-center justify-between text-[.85rem] font-semibold text-ink2"><span>{label}</span>{Icon && <Icon size={17} />}</div><div className={`mt-3 text-[clamp(1.15rem,3vw,1.85rem)] font-semibold leading-none ${c}`} style={{ fontStretch: "112%" }}>{value}</div>{hint && <div className="mt-2 text-sm text-ink2">{hint}</div>}</div>);
   return href ? <Link href={href} className="block">{body}</Link> : <div>{body}</div>;
 }
 export const Money = ({ v, d = 0 }: { v: number; d?: number }) => <span className="tabular-nums">{inr(v, d)}</span>;

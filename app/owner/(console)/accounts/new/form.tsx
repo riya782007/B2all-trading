@@ -2,7 +2,7 @@
 import { useActionState, useState } from "react";
 import { moneyAction, type FormState } from "@/app/actions";
 type I = { id: string; party: string; label: string; balance: number };
-export default function MoneyForm({ type, parties, invoices, expenseLedgers, preset }: { type: "receipt" | "payment" | "expense"; parties: { id: string; name: string }[]; invoices: I[]; expenseLedgers: string[]; preset: { party?: string; invoice?: string; amount?: string } }) {
+export default function MoneyForm({ type, parties, invoices, expenseLedgers, preset, requestId }: { type: "receipt" | "payment" | "expense"; requestId: string; parties: { id: string; name: string }[]; invoices: I[]; expenseLedgers: string[]; preset: { party?: string; invoice?: string; amount?: string } }) {
   const [s, act, pending] = useActionState<FormState, FormData>(moneyAction, {});
   const [party, setParty] = useState(preset.party ?? parties[0]?.id ?? "");
   const [invoice, setInvoice] = useState(preset.invoice ?? "");
@@ -10,7 +10,7 @@ export default function MoneyForm({ type, parties, invoices, expenseLedgers, pre
   const mine = invoices.filter((i) => i.party === party);
   return (
     <form action={act} className="card grid gap-4 p-6">
-      <input type="hidden" name="type" value={type} />
+      <input type="hidden" name="request_id" value={requestId}/><input type="hidden" name="type" value={type} />
       {type === "expense" ? (<>
         <label className="field"><span>Expense head</span><select name="ledger" className="input">{expenseLedgers.map((l) => <option key={l}>{l}</option>)}</select></label>
         <label className="field"><span>What was it for?</span><input name="narration" required className="input" placeholder="e.g. Freight for DC-519" /></label>

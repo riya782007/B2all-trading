@@ -5,15 +5,17 @@ export const hasAI = Boolean(process.env.OPENAI_API_KEY);
 
 /** Sends an email from the company's Gmail (OAuth refresh token). Returns false when Gmail is not connected. */
 export async function sendMail(to: string, subject: string, html: string): Promise<boolean> {
-  if (!hasGmail || !to) return false;
+  if (!hasGmail || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(to) || /[\r\n]/.test(process.env.GMAIL_SENDER || "")) return false;
   const tok = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    signal: AbortSignal.timeout(15000),
     body: new URLSearchParams({ client_id: process.env.GMAIL_CLIENT_ID!, client_secret: process.env.GMAIL_CLIENT_SECRET!, refresh_token: process.env.GMAIL_REFRESH_TOKEN!, grant_type: "refresh_token" }),
   }).then((r) => r.json()).catch(() => null);
   if (!tok?.access_token) return false;
   const mime = [`From: ${process.env.GMAIL_SENDER}`, `To: ${to}`, `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`, "MIME-Version: 1.0", "Content-Type: text/html; charset=UTF-8", "", html].join("\r\n");
   const r = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST", headers: { authorization: `Bearer ${tok.access_token}`, "content-type": "application/json" },
+    signal: AbortSignal.timeout(15000),
     body: JSON.stringify({ raw: Buffer.from(mime).toString("base64url") }),
   }).catch(() => null);
   return !!r?.ok;

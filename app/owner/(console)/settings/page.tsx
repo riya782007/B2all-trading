@@ -12,12 +12,12 @@ export default async function Settings() {
   const me = await staff("admin"); if (!me) return <Denied />;
   const edit = allowed(me, "admin", "edit"); const s = await getStore();
   const [co, mats] = await Promise.all([company(s), s.all("materials")]);
-  const conn = [["Database (Supabase)", hasSupabase, "Live data and logins"], ["Gmail", hasGmail, "Sends invoices, contracts and offers by email. Needs GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN and GMAIL_SENDER"], ["OpenAI", hasAI, "Writes offer messages for you"], ["WhatsApp Business API", false, "Automatic WhatsApp sending; until then messages open on your phone"], ["E-way bill API", false, "Generate and extend e-way bills from here; needs a GST suvidha provider"]] as const;
+  const conn = [["Database (Supabase)", hasSupabase, "Live data and logins"], ["Gmail", hasGmail, "Email delivery after OAuth setup. Contact your developer to connect the company mailbox."], ["OpenAI", hasAI, "Writes offer messages for you"], ["WhatsApp Business API", false, "Automatic WhatsApp sending; until then messages open on your phone"], ["E-way bill API", false, "Generate and extend e-way bills from here; needs a GST suvidha provider"]] as const;
   return (
     <Page title="Settings" sub="Company details print on every invoice and contract.">
       <div className="card p-6"><CompanyForm co={co} edit={edit} /></div>
       <Section title="Materials, HSN and GST">
-        <p className="mb-3 text-sm text-ink2">Coal is 18% GST with no compensation cess since the September 2025 GST change. Please have your accountant confirm the other rates.</p>
+        <p className="mb-3 text-sm text-ink2">Confirm each HSN, GST rate and applicable cess with your accountant. Set opening stock only at the agreed cutover date.</p>
         <div className="space-y-2">{[...mats, null].map((m, i) => (
           <form key={m?.id ?? "new"} action={saveMaterial} className="card grid grid-cols-2 gap-2 p-3 sm:grid-cols-[1.4fr_1fr_.7fr_.6fr_.6fr_.8fr_.8fr_auto] sm:items-end">
             <input type="hidden" name="id" value={m?.id ?? ""} />
@@ -32,7 +32,7 @@ export default async function Settings() {
           </form>))}</div>
       </Section>
       <Section title="Connections">
-        <div className="card divide-y divide-line">{conn.map(([n, ok, d]) => <div key={n} className="flex items-start gap-3 px-5 py-4">{ok ? <CheckCircle2 className="mt-0.5 text-pri" size={20} /> : <CircleDashed className="mt-0.5 text-ink2" size={20} />}<div><div className="font-medium">{n} <span className="text-sm font-normal text-ink2">· {ok ? "Connected" : "Not connected"}</span></div><div className="text-sm text-ink2">{d}</div></div></div>)}</div>
+        <div className="card divide-y divide-line">{conn.map(([n, ok, d]) => <div key={n} className="flex items-start gap-3 px-5 py-4">{ok ? <CheckCircle2 className="mt-0.5 text-pri" size={20} /> : <CircleDashed className="mt-0.5 text-ink2" size={20} />}<div><div className="font-medium">{n} <span className="text-sm font-normal text-ink2">· {ok ? "Configured" : "Not connected"}</span></div><div className="text-sm text-ink2">{d}</div></div></div>)}</div>
       </Section>
     </Page>
   );

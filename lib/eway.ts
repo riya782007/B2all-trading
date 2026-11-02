@@ -2,7 +2,8 @@
 export const maxValidityDays = (km: number, odc = false) => (km > 0 ? Math.ceil(km / (odc ? 20 : 200)) : 0);
 export function ewayStatus(validTill?: string | null, now = Date.now()): { key: "none" | "active" | "soon" | "ended"; label: string; tone: "green" | "amber" | "grey" } {
   if (!validTill) return { key: "none", label: "None", tone: "grey" };
-  const end = new Date(validTill + "T23:59:59").getTime();
+  const end = new Date(validTill + "T23:59:59.999+05:30").getTime();
+  if (!Number.isFinite(end)) return { key: "none", label: "Check date", tone: "amber" };
   if (end < now) return { key: "ended", label: "Ended", tone: "grey" };
   return end - now < 36 * 36e5 ? { key: "soon", label: "Ends soon", tone: "amber" } : { key: "active", label: "Valid", tone: "green" };
 }
