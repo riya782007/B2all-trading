@@ -72,3 +72,10 @@ select count(*) from public.invoices;
 `npm test` executes arithmetic/domain tests and real PostgreSQL via PGlite, loading the full installed schema and the new migration. It checks rollback via fault injection. This is not a multi-session production concurrency/load test. `npm run lint`, `npm run build`, then `node scripts/smoke.mjs http://127.0.0.1:3002` exercise the local compiled sample app. Browser tests use sample data, not real supplier bills or payments.
 
 Production dependency audit: zero advisories on 2 November 2026. Development dependencies still have moderate minimatch advisories; npm proposes incompatible downgrades, so no forced downgrade or untested major override was applied. CI uses trusted repository paths. Track upstream fixes.
+
+### Completed local verification
+- Eight regression tests passed, including a PostgreSQL integration test with many assertions: partial allocations, retry idempotency for bills and settlements, duplicate and printed-total rejection, forced rollback, role filtering, profile escalation protection and immutable journals.
+- ESLint and the Next.js production build passed.
+- 55 local HTTP route/role checks passed against compiled sample mode.
+- Browser: 60 MT receipt → 10.5 MT bill → 49.5 MT remains open. Light/dark switching worked; mobile dialog and customer landing layout were checked. At 390 px, document width is 375 px (no page overflow); wide tables scroll inside their card.
+- Live Supabase, production email authentication, Gmail sending, actual Tally import and multi-session load tests remain unverified. Riya will execute the database handoff.
