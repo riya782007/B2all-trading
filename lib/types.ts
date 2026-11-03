@@ -5,12 +5,13 @@ export type Profile = {
   role: "customer" | "owner" | "staff"; staff_role_id?: string | null; gstin?: string | null; state_code?: string | null;
   address?: string | null; created_at: string;
 };
-export type Company = { id: string; name: string; gstin: string; state_code: string; address: string; phone: string; email: string; bank: string; invoice_prefix: string; terms: string };
+export type Company = { id: string; name: string; gstin: string; state_code: string; pincode?: string; address: string; phone: string; email: string; bank: string; invoice_prefix: string; terms: string };
 export type Material = { id: string; name: string; category: string; note?: string | null; hsn: string; gst_rate: number; unit: string; opening_qty: number; opening_rate: number; active: boolean };
 export type Party = {
   id: string; name: string; type: "customer" | "supplier"; gstin?: string | null; state_code?: string | null; address?: string | null;
-  phone?: string | null; email?: string | null; city?: string | null; profile_id?: string | null; credit_days: number; created_at: string;
+  phone?: string | null; email?: string | null; city?: string | null; pincode?: string | null; profile_id?: string | null; credit_days: number; created_at: string;
 };
+export type RouteCache = { id: string; from_pin: string; to_pin: string; km: number; created_at: string };
 export type Enquiry = { id: string; customer_id: string; status: "new" | "quoted" | "won" | "lost"; note?: string | null; order_id?: string | null; created_at: string };
 export type EnquiryItem = { id: string; enquiry_id: string; material_id: string; qty: number; unit: string };
 export type Order = {
@@ -47,6 +48,6 @@ export type Activity = { id: string; at: string; by_name: string; what: string }
 export type Tables = {
   profiles: Profile; company: Company; materials: Material; parties: Party; enquiries: Enquiry; enquiry_items: EnquiryItem;
   orders: Order; deliveries: Delivery; contracts: Contract; invoices: Invoice; vouchers: Voucher; ledgers: Ledger;
-  offers: Offer; offer_sends: OfferSend; roles: Role; invites: Invite; activity: Activity;
+  offers: Offer; offer_sends: OfferSend; roles: Role; invites: Invite; activity: Activity; route_cache: RouteCache;
 };
 export type Table = keyof Tables;

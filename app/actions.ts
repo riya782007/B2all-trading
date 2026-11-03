@@ -239,7 +239,8 @@ export async function savePartyAction(_: FormState, fd: FormData): Promise<FormS
   const me = await mustStaff(type === "customer" ? "crm" : "purchase", "create"); const s = await getStore();
   const gstin = str(fd, "gstin").toUpperCase();
   if (gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(gstin)) return { error: "That GSTIN does not look right." };
-  const data = { name: str(fd, "name"), type, gstin: gstin || null, state_code: str(fd, "state_code") || stateFromGstin(gstin) || null, phone: str(fd, "phone") || null, email: str(fd, "email") || null, city: str(fd, "city") || null, address: str(fd, "address") || null, credit_days: n(fd, "credit_days") || (type === "customer" ? 15 : 30) } as const;
+  if (str(fd, "pincode") && !/^[1-9]\d{5}$/.test(str(fd, "pincode"))) return { error: "A PIN code has 6 digits." };
+  const data = { name: str(fd, "name"), type, gstin: gstin || null, state_code: str(fd, "state_code") || stateFromGstin(gstin) || null, phone: str(fd, "phone") || null, email: str(fd, "email") || null, city: str(fd, "city") || null, pincode: str(fd, "pincode") || null, address: str(fd, "address") || null, credit_days: n(fd, "credit_days") || (type === "customer" ? 15 : 30) } as const;
   if (data.name.length < 2) return { error: "Enter a name." };
   const id = str(fd, "id");
   if (id) { await s.update("parties", id, data); await D.log(s, me.profile.name, `Updated ${data.name}`); redirect(done(`/owner/parties/${id}`)); }
@@ -307,7 +308,7 @@ export async function saveCompany(_: FormState, fd: FormData): Promise<FormState
   const me = await mustStaff("admin", "edit"); const s = await getStore();
   const gstin = str(fd, "gstin").toUpperCase();
   if (gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(gstin)) return { error: "That GSTIN does not look right." };
-  const patch = { name: str(fd, "name"), gstin, state_code: stateFromGstin(gstin) || str(fd, "state_code") || "22", address: str(fd, "address"), phone: str(fd, "phone"), email: str(fd, "email"), bank: str(fd, "bank"), invoice_prefix: str(fd, "invoice_prefix") || "B2A", terms: str(fd, "terms") };
+  const patch = { name: str(fd, "name"), gstin, state_code: stateFromGstin(gstin) || str(fd, "state_code") || "22", address: str(fd, "address"), pincode: str(fd, "pincode"), phone: str(fd, "phone"), email: str(fd, "email"), bank: str(fd, "bank"), invoice_prefix: str(fd, "invoice_prefix") || "B2A", terms: str(fd, "terms") };
   if (await s.one("company", "main")) await s.update("company", "main", patch); else await s.insert("company", { id: "main", ...patch });
   await D.log(s, me.profile.name, "Updated company settings");
   revalidatePath("/", "layout");
@@ -323,3 +324,28 @@ export async function saveMaterial(fd: FormData) {
   revalidatePath("/", "layout");
 }
 export async function guardStaff() { return isStaff(await getMe()); }
+
+/* ───────── PIN codes and road distance ───────── */
+
+export async function lookupPinAction(pin: string) {
+  const me = await getMe(); if (!me) return null;
+  const { lookupPin } = await import("@/lib/geo");
+  return lookupPin(pin);
+}
+
+export type RouteInfo = { km?: number; days?: number; validTill?: string; from?: string; to?: string; error?: string };
+/** Distance between the company and the order's party, with the e-way bill validity it allows. */
+export async function routeForOrder(orderId: string, billDate: string): Promise<RouteInfo> {
+  await mustStaff("inventory", "create");
+  const s = await getStore();
+  const [{ roadKm, validPin, hasRoutes }, { maxValidityDays }, { addDays }] = await Promise.all([import("@/lib/geo"), import("@/lib/eway"), import("@/lib/money")]);
+  const o = await s.one("orders", orderId); if (!o) return { error: "Choose an order." };
+  const [p, co] = await Promise.all([s.one("parties", o.party_id), D.company(s)]);
+  const from = co.pincode ?? "", to = p?.pincode ?? "";
+  if (!validPin(from)) return { error: "Add your company PIN code in Settings to work out distances." };
+  if (!validPin(to)) return { error: `Add a PIN code for ${p?.name ?? "this party"} to work out the distance.` };
+  const km = await roadKm(s, from, to);
+  if (km == null) return { error: hasRoutes ? "Could not work out the road distance right now. Type it on the e-way bill as usual." : "Road distance switches on once the route key is added in Vercel." };
+  const days = maxValidityDays(km);
+  return { km, days, validTill: addDays(billDate || today(), days), from, to };
+}

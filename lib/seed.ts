@@ -25,7 +25,7 @@ export const DEFAULT_MATERIALS: Omit<Material, "id">[] = [
 
 export async function seed(s: Store) {
   const d = (n: number) => addDays(today(), n);
-  await s.insert("company", { id: "main", name: "B2 All Commo Trade Pvt. Ltd.", gstin: "22AAAAA0000A1Z5", state_code: "22", address: "Raigarh, Chhattisgarh 496001", phone: "+91 90000 00000", email: "accounts@example.com", bank: "Sample Bank · A/c 000000000000 · IFSC SAMP0000000", invoice_prefix: "B2A", terms: "Disputes subject to Raigarh jurisdiction." });
+  await s.insert("company", { id: "main", name: "B2 All Commo Trade Pvt. Ltd.", gstin: "22AAAAA0000A1Z5", state_code: "22", address: "Raigarh, Chhattisgarh 496001", pincode: "496001", phone: "+91 90000 00000", email: "accounts@example.com", bank: "Sample Bank · A/c 000000000000 · IFSC SAMP0000000", invoice_prefix: "B2A", terms: "Disputes subject to Raigarh jurisdiction." });
   for (const [name, grp] of STD_LEDGERS) await s.insert("ledgers", { name, grp, opening: name === "Bank" ? 2500000 : name === "Capital" ? -2500000 : 0 });
   const mats = []; for (const m of DEFAULT_MATERIALS) mats.push(await s.insert("materials", m));
   const roles = []; for (const r of DEFAULT_ROLES) roles.push(await s.insert("roles", r));
@@ -38,8 +38,8 @@ export async function seed(s: Store) {
   const cust2 = await P("demo-cust2", "Sunita Verma", "customer", { company: "Vidarbha Alloys", city: "Nagpur", state_code: "27", phone: "+919810000002" });
 
   const by = "Sample data";
-  const jain = await createParty(s, by, { name: "Jain Steel & Power", type: "customer", gstin: "22BBBBB1111B1Z2", city: "Raipur", phone: "+919810000001", profile_id: cust.id, credit_days: 15, email: "purchase@example.com" });
-  const vid = await createParty(s, by, { name: "Vidarbha Alloys", type: "customer", state_code: "27", city: "Nagpur", phone: "+919810000002", profile_id: cust2.id, credit_days: 30 });
+  const jain = await createParty(s, by, { name: "Jain Steel & Power", type: "customer", gstin: "22BBBBB1111B1Z2", city: "Raipur", pincode: "492001", phone: "+919810000001", profile_id: cust.id, credit_days: 15, email: "purchase@example.com" });
+  const vid = await createParty(s, by, { name: "Vidarbha Alloys", type: "customer", state_code: "27", city: "Nagpur", pincode: "440001", phone: "+919810000002", profile_id: cust2.id, credit_days: 30 });
   const mehta = await createParty(s, by, { name: "Mehta Sponge Iron", type: "customer", state_code: "22", city: "Bhilai", phone: "+919810000004" });
   const mines = await createParty(s, by, { name: "Sample Mines Pvt Ltd", type: "supplier", gstin: "21CCCCC2222C1Z9", city: "Keonjhar", phone: "+919820000001" });
   const alloys = await createParty(s, by, { name: "Sample Ferro Works", type: "supplier", state_code: "22", city: "Raipur", phone: "+919820000002" });

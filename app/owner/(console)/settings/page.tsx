@@ -3,6 +3,7 @@ import { staff, allowed } from "@/lib/auth";
 import { getStore } from "@/lib/store";
 import { company } from "@/lib/domain";
 import { hasAI, hasGmail } from "@/lib/integrations";
+import { hasRoutes } from "@/lib/geo";
 import { hasSupabase } from "@/lib/supabase";
 import { Denied, Page, Section } from "@/components/ui";
 import { saveMaterial } from "@/app/actions";
@@ -12,7 +13,7 @@ export default async function Settings() {
   const me = await staff("admin"); if (!me) return <Denied />;
   const edit = allowed(me, "admin", "edit"); const s = await getStore();
   const [co, mats] = await Promise.all([company(s), s.all("materials")]);
-  const conn = [["Database (Supabase)", hasSupabase, "Live data and logins"], ["Gmail", hasGmail, "Sends invoices, contracts and offers by email. Needs GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN and GMAIL_SENDER"], ["OpenAI", hasAI, "Writes offer messages for you"], ["WhatsApp Business API", false, "Automatic WhatsApp sending; until then messages open on your phone"], ["E-way bill API", false, "Generate and extend e-way bills from here; needs a GST suvidha provider"]] as const;
+  const conn = [["Database (Supabase)", hasSupabase, "Live data and logins"], ["Gmail", hasGmail, "Sends invoices, contracts and offers by email. Needs GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN and GMAIL_SENDER"], ["OpenAI", hasAI, "Writes offer messages for you"], ["Road distance (OpenRouteService)", hasRoutes, "Works out truck distance and e-way bill validity from PIN codes. Needs ORS_API_KEY. PIN code lookup works without a key"], ["WhatsApp Business API", false, "Automatic WhatsApp sending; until then messages open on your phone"], ["E-way bill API", false, "Generate and extend e-way bills from here; needs a GST suvidha provider"]] as const;
   return (
     <Page title="Settings" sub="Company details print on every invoice and contract.">
       <div className="card p-6"><CompanyForm co={co} edit={edit} /></div>
