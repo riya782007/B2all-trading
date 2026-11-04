@@ -4,10 +4,10 @@ import { inr } from "@/lib/money";
 
 export function Page({ title, sub, actions, children, back }: { title: React.ReactNode; sub?: React.ReactNode; actions?: React.ReactNode; children: React.ReactNode; back?: { href: string; label: string } }) {
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="page-frame mx-auto w-full max-w-[1400px]">
       {back && <Link href={back.href} className="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-ink2 hover:text-ink"><ChevronLeft size={16} />{back.label}</Link>}
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0 max-w-3xl"><h1 className="text-[2rem] sm:text-[2.6rem]">{title}</h1>{sub && <p className="mt-2 text-[1.02rem] text-ink2">{sub}</p>}</div>
+      <div className="page-heading mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0 max-w-3xl"><h1 className="text-[1.8rem] sm:text-[2rem]">{title}</h1>{sub && <p className="mt-2 max-w-2xl text-[.85rem] leading-relaxed text-ink2">{sub}</p>}</div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
       {children}
@@ -16,7 +16,7 @@ export function Page({ title, sub, actions, children, back }: { title: React.Rea
 }
 export function Stat({ label, value, hint, tone = "ink", href, icon: Icon }: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: "ink" | "pri" | "ter" | "err"; href?: string; icon?: LucideIcon }) {
   const c = { ink: "text-ink", pri: "text-pri", ter: "text-ter", err: "text-err" }[tone];
-  const body = (<div className={`h-full px-5 py-5 ${href ? "transition-colors hover:bg-s2" : ""}`}><div className="flex items-center justify-between text-[.85rem] font-semibold text-ink2"><span>{label}</span>{Icon && <Icon size={17} />}</div><div className={`mt-3 text-[clamp(1.15rem,3vw,1.85rem)] font-semibold leading-none ${c}`} style={{ fontStretch: "112%" }}>{value}</div>{hint && <div className="mt-2 text-sm text-ink2">{hint}</div>}</div>);
+  const body = (<div className={`h-full px-5 py-5 ${href ? "transition-colors hover:bg-s2" : ""}`}><div className="flex items-center justify-between text-[.76rem] font-medium text-ink2"><span>{label}</span>{Icon && <span className="grid size-8 place-items-center rounded-lg border border-line bg-bg text-pri"><Icon size={16} /></span>}</div><div className={`mt-3 text-[clamp(1.15rem,3vw,1.85rem)] font-semibold leading-none ${c}`} >{value}</div>{hint && <div className="mt-3 text-xs text-ink2">{hint}</div>}</div>);
   return href ? <Link href={href} className="block">{body}</Link> : <div>{body}</div>;
 }
 export const Money = ({ v, d = 0 }: { v: number; d?: number }) => <span className="tabular-nums">{inr(v, d)}</span>;

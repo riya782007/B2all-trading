@@ -13,13 +13,13 @@ function List({ groups, onPick }: { groups: NavGroup[]; onPick?: () => void }) {
   const params = useSearchParams();
   const active = (h: string) => { const [base, query] = h.split("?"); return (base === "/owner" ? path === base : path === base || path.startsWith(base + "/")) && (!query || [...new URLSearchParams(query)].every(([k,v]) => (params.get(k) || (k === "kind" ? "sale" : "")) === v)); };
   return (
-    <nav className="space-y-6" aria-label="Console">
+    <nav className="space-y-5" aria-label="Console">
       {groups.map((g) => (
         <div key={g.label}>
-          {g.label && <div className="mb-1.5 px-3 text-[.78rem] font-semibold text-rail-ink">{g.label}</div>}
+          {g.label && <div className="mb-2 px-3 text-[.6rem] font-semibold uppercase tracking-[.16em] text-rail-ink">{g.label}</div>}
           {g.items.map((i) => { const Icon = ICONS[i.icon]; return (
             <Link key={i.href} href={i.href} onClick={onPick} className="navitem" aria-current={active(i.href) ? "page" : undefined}>
-              <Icon size={19} strokeWidth={1.9} /><span className="flex-1">{i.label}</span>{!!i.badge && <span className="grid h-5 min-w-5 place-items-center rounded-md bg-act px-1.5 text-[11px] font-bold text-on-act">{i.badge}</span>}
+              <Icon size={17} strokeWidth={1.7} /><span className="flex-1">{i.label}</span>{!!i.badge && <span className="grid h-5 min-w-5 place-items-center rounded-md bg-act px-1.5 text-[11px] font-bold text-on-act">{i.badge}</span>}
             </Link>); })}
         </div>
       ))}

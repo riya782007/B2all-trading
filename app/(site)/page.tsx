@@ -1,72 +1,30 @@
 import Link from "next/link";
-import { Flame, Gem, Mountain, Recycle, Layers, ClipboardList, MessagesSquare, Truck, ArrowUpRight, Check, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { ArrowUpRight, ArrowRight, ClipboardList, MessagesSquare, Truck, FileText, MapPin, Mail, Layers } from "lucide-react";
 import { getMe } from "@/lib/auth";
 import { getStore } from "@/lib/store";
-import AddButton from "@/components/site/AddButton";
-
-const CAT: Record<string, { icon: typeof Flame; tone: string }> = {
-  Coal: { icon: Flame, tone: "from-[#2a2d33] to-[#0f1114] text-white" },
-  "Ferro alloys": { icon: Gem, tone: "from-[#6b7682] to-[#353d47] text-white" },
-  "Iron ore": { icon: Mountain, tone: "from-[#9b3f1d] to-[#561f0c] text-white" },
-  Scrap: { icon: Recycle, tone: "from-[#7a6a52] to-[#3f3527] text-white" },
-  Minerals: { icon: Layers, tone: "from-[#d9d3c4] to-[#a69d88] text-[#22201a]" },
-};
+import Catalogue from "@/components/site/Catalogue";
 
 export default async function Home() {
-  const [me, s] = await Promise.all([getMe(), getStore()]);
-  const mats = (await s.all("materials")).filter((m) => m.active);
-  const cats = [...new Set(mats.map((m) => m.category))];
-  const loggedIn = me?.profile.role === "customer";
-  return (<>
-    <section className="relative overflow-hidden border-b border-line bg-s1">
-      <div className="pointer-events-none absolute -right-40 -top-40 size-[650px] rounded-full bg-pri-c/60 blur-3xl" aria-hidden/>
-      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:py-20 lg:grid-cols-[1.15fr_.85fr] lg:gap-16">
-        <div><p className="inline-flex items-center gap-2 rounded-full border border-line bg-bg px-3 py-1.5 text-xs font-semibold tracking-wide text-pri"><span className="size-1.5 rounded-full bg-pri"/>INDUSTRIAL MATERIALS. PERSONAL SERVICE.</p>
-          <h1 className="mt-6 max-w-2xl text-[clamp(2.6rem,5vw,4.4rem)]">Keep your supply moving.<span className="block text-pri">Keep your business ahead.</span></h1>
-          <p className="mt-6 max-w-lg text-lg leading-relaxed text-ink2">Coal, ore, alloys and minerals for the industries building India. One place to enquire, follow your deliveries and find every document.</p>
-          <div className="mt-8 flex flex-wrap gap-3"><a href="#materials" className="btn btn-filled btn-lg">Explore materials<ArrowUpRight size={18}/></a><Link href={loggedIn ? "/account" : "/login"} className="btn btn-outline btn-lg">{loggedIn ? "My supply desk" : "Your customer account"}</Link></div>
-          <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-ink2"><span className="flex items-center gap-1.5"><Check size={15} className="text-pri"/>Quotes for your grade</span><span className="flex items-center gap-1.5"><Check size={15} className="text-pri"/>Delivery visibility</span><span className="flex items-center gap-1.5"><Check size={15} className="text-pri"/>Documents together</span></div>
-        </div>
-        <div className="relative rounded-3xl border border-line bg-bg p-5 sm:p-7">
-          <div className="flex items-center justify-between border-b border-line pb-5"><div><p className="text-xs font-medium text-ink2">YOUR B2ALL SUPPLY DESK</p><h2 className="mt-1 text-xl">From enquiry to delivery.</h2></div><ShieldCheck className="text-pri" size={25}/></div>
-          <div className="my-5 grid grid-cols-2 gap-2">{cats.slice(0,4).map(c=>{const C=CAT[c]??CAT.Minerals;const Icon=C.icon;return <a href={`#cat-${c}`} key={c} className="flex items-center gap-3 rounded-xl border border-line bg-s1 p-3 text-sm font-semibold hover:border-pri"><Icon size={19} className="text-pri"/>{c}<ArrowUpRight size={14} className="ml-auto text-ink2"/></a>})}</div>
-          <ol className="space-y-0">{[[ClipboardList,"Your requirements","Grade, quantity and delivery location"],[MessagesSquare,"A personal quote","Reviewed with the B2All team"],[Truck,"Supply, with visibility","Vehicles, receipts and invoices in your account"]].map(([Icon,title,desc],i)=>{const I=Icon as typeof Truck;return <li key={String(title)} className="relative flex gap-4 py-4">{i<2 && <div className="absolute bottom-[-16px] left-5 top-14 border-l border-line"/>}<span className="relative grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-s1 text-pri"><I size={19}/></span><div><div className="font-semibold">{String(title)}</div><p className="mt-1 text-xs text-ink2">{String(desc)}</p></div></li>})}</ol>
-          <div className="mt-3 rounded-xl bg-pri-c p-4 text-sm text-on-pri-c"><b>Built around your business.</b><p className="mt-1 text-xs">Your orders, your documents, your next enquiry. Always easy to find.</p></div>
-        </div>
-      </div>
+  const [me,s] = await Promise.all([getMe(),getStore()]);
+  const materials=(await s.all("materials")).filter(m=>m.active).map(({id,name,category,note})=>({id,name,category,note}));
+  const loggedIn=me?.profile.role==="customer";
+  return <div className="public-home">
+    <section className="industry-hero">
+      <div className="hero-copy"><p className="site-kicker"><span className="inline-block size-1.5 rounded-full bg-current"/> ROOTED IN RESOURCES. BUILT ON RELATIONSHIPS.</p><h1>The right materials.<br/>A stronger<br/><em>tomorrow.</em></h1><p className="hero-lead">Coal, alloys, ores and minerals. Connecting India’s industries with the resources they need to move forward.</p><div className="hero-actions"><a href="#materials" className="btn btn-filled btn-lg">Find your material <ArrowUpRight size={18}/></a><a href="#group" className="btn btn-text btn-lg">Discover B2All <ArrowRight size={16}/></a></div><div className="hero-caption"><span>RAIGARH, CHHATTISGARH</span><span>SOURCE → SUPPLY</span></div></div>
+      <div className="hero-photo"><Image src="/materials/benefecationyard-scaled.webp" alt="Mineral processing and materials handling yard" fill priority sizes="(max-width: 900px) 100vw, 50vw"/><div className="hero-photo-shade"/><p className="hero-photo-top">MATERIALS THAT MOVE INDUSTRY</p><div className="hero-photo-bottom"><span>From the ground.<br/>To what comes next.</span><a href="#operations" aria-label="Explore our operations"><ArrowUpRight size={24}/></a></div></div>
     </section>
-
-    <section id="materials" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-10">
-      <h2 className="text-[2rem]">What we supply</h2>
-      <p className="mt-1 text-ink2">Prices move daily, so we quote for your grade and quantity.</p>
-      <div className="mt-5 flex flex-wrap gap-2">{cats.map((c) => <a key={c} href={`#cat-${c}`} className="filter">{c}</a>)}</div>
-      {cats.map((c) => (
-        <div key={c} id={`cat-${c}`} className="scroll-mt-20 pt-8">
-          <h3 className="mb-3 text-[1.05rem] text-ink2">{c}</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {mats.filter((m) => m.category === c).map((m) => { const C = CAT[m.category] ?? CAT.Minerals; const Icon = C.icon; return (
-              <article key={m.id} className="card flex flex-col gap-4 p-5">
-                <div className="flex items-start gap-4"><div className={`grid size-12 shrink-0 place-items-center rounded-[10px] bg-gradient-to-br ${C.tone}`}><Icon size={22} /></div><div><h4 className="display text-[1.1rem]">{m.name}</h4><p className="text-sm text-ink2">{m.note || "Grade and quantity as you need"}</p></div></div>
-                <AddButton id={m.id} loggedIn={loggedIn} />
-              </article>); })}
-          </div>
-        </div>
-      ))}
-    </section>
-
-    <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12">
-      <h2 className="text-[2rem]">How it works</h2>
-      <div className="mt-8 grid gap-8 md:grid-cols-3">
-        {[[ClipboardList, "Tell us what you need", "Pick materials and quantities. One tap sends it."], [MessagesSquare, "Get a quote and contract", "We quote for your grade. Sign the contract right from your page."], [Truck, "Track every truck", "See each dispatch, vehicle, e-way bill and invoice the moment it happens."]].map(([Icon, t, d], i) => { const I2 = Icon as typeof Flame; return (
-          <div key={i} className="border-t-4 border-ink pt-5"><div className="flex items-center gap-3"><span className="text-[2rem] font-extrabold leading-none">{i + 1}</span><I2 size={20} className="text-ink2" /></div><div className="display mt-4 text-[1.15rem]">{t as string}</div><p className="mt-1 text-ink2">{d as string}</p></div>); })}
-      </div>
-    </section>
-
-    <section className="mx-auto max-w-6xl px-4">
-      <div className="flex flex-col items-start justify-between gap-5 rounded-[14px] bg-rail p-8 text-white sm:flex-row sm:items-center sm:p-10">
-        <div><div className="text-[1.9rem] font-extrabold">Your next order is one tap away.</div><p className="mt-1 text-rail-ink">Your history, invoices and deliveries stay on your own page.</p></div>
-        <a href="#materials" className="btn btn-filled btn-lg">Start an enquiry</a>
-      </div>
-    </section>
-  </>);
+    <div className="industry-ribbon"><span>SUPPORTING THE INDUSTRIES THAT BUILD INDIA</span><div>Iron & steel <i>✦</i> Energy <i>✦</i> Infrastructure <i>✦</i> Manufacturing</div></div>
+    <section className="site-section portal-intro"><div><p className="site-kicker">YOUR BUSINESS. CONNECTED.</p><h2>Your next supply.<br/>Already a step closer.</h2></div><div><p className="text-base leading-relaxed text-ink2">A personal trading relationship, with a simpler way to stay informed. Build an enquiry, follow your deliveries and keep your documents together.</p><Link href={loggedIn?"/account":"/login"} className="mt-6 inline-flex items-center gap-3 font-medium text-pri">{loggedIn?"Open your supply desk":"Sign in to your supply desk"}<ArrowUpRight size={20}/></Link></div></section>
+    <section id="materials" className="site-section border-t border-line"><div className="site-section-head"><div><p className="site-kicker">01 / OUR MATERIALS</p><h2>Essential inputs.<br/>Specific to your needs.</h2></div><p>Explore the range. Tell us your grade, quantity and delivery location. We’ll work through the right specification together.</p></div><Catalogue materials={materials} loggedIn={loggedIn}/><div className="catalog-note"><span>Need a material or grade you can’t find?</span><a href="mailto:info@b2allcommo.com" className="inline-flex items-center gap-2">Talk to our team<ArrowUpRight size={17}/></a></div></section>
+    <section id="operations" className="operations-section"><div className="site-section"><div className="site-section-head"><div><p className="site-kicker">02 / FROM SOURCE TO SUPPLY</p><h2>More than materials.<br/>Every step connected.</h2></div><p>Bringing sourcing, processing and logistics together around the needs of your business.</p></div><div className="operations-layout"><div className="operations-photo"><Image src="/materials/mineral.webp" alt="Industrial mineral processing operations" fill sizes="(max-width:900px) 100vw, 50vw"/></div><div>{[
+      ["01","Sourcing & material processing","Coal, ores, alloys and minerals, with crushing, screening and beneficiation requirements discussed for each supply."],
+      ["02","Logistics & dispatch coordination","Road and rail movement, dispatch planning and the documentation that keeps each consignment traceable."],
+      ["03","Fuel & construction materials","Petroleum product distribution and brick supply alongside the core industrial materials portfolio."],
+      ["04","Infrastructure & community services","Railway logistics advice, rural development works and employment-linked infrastructure programmes."],
+    ].map(([n,title,desc])=><details className="operation-row" key={n}><summary><span>{n}</span><h3>{title}</h3><span className="ml-auto">+</span></summary><p>{desc}</p></details>)}</div></div></div></section>
+    <section id="how" className="site-section"><div className="site-section-head"><div><p className="site-kicker">03 / YOUR SUPPLY DESK</p><h2>Less chasing.<br/>More clarity.</h2></div><Link href={loggedIn?"/account":"/login"} className="btn btn-outline">{loggedIn?"My account":"Customer sign in"}<ArrowUpRight size={16}/></Link></div><div className="supply-steps">{[[ClipboardList,"01","Tell us what you need","Choose your material and quantity. Add the grade and delivery details to your enquiry."],[MessagesSquare,"02","Agree the details","Work with the team on price and terms. Review your contract in your customer account."],[Truck,"03","Follow your supply","View recorded dispatches, vehicle details and progress against your orders."],[FileText,"04","Keep everything together","Find invoices, review past orders and start your next enquiry from your history."]].map(([Icon,n,title,desc])=>{const I=Icon as typeof Truck;return <div key={String(n)}><div className="flex items-center justify-between"><I size={23}/><span>{String(n)}</span></div><h3>{String(title)}</h3><p>{String(desc)}</p></div>})}</div></section>
+    <section id="group" className="group-section"><div className="site-section"><div className="site-section-head"><div><p className="site-kicker">04 / THE B2ALL GROUP</p><h2>Built on relationships.<br/>Moving with purpose.</h2></div><p>B2 All Commo Trade Pvt. Ltd. brings raw-material trade, processing and logistics together from Raigarh, Chhattisgarh.</p></div><div className="group-grid"><div><Layers size={26}/><h3>Industry knowledge.</h3><p>From minerals to metallics, a portfolio shaped around the iron and steel ecosystem.</p></div><div><MapPin size={26}/><h3>Regional connections.</h3><p>Serving industrial requirements through sourcing relationships and logistics coordination.</p></div><div><Truck size={26}/><h3>A practical partnership.</h3><p>Clear specifications, agreed terms and visibility from enquiry through recorded deliveries.</p></div></div><div id="innovation" className="mt-10 border-t border-line pt-7"><p className="site-kicker">OUR COMMITMENTS</p><div className="grid gap-6 md:grid-cols-3"><div><h3 className="text-lg">Responsible resources</h3><p className="mt-2 text-sm leading-relaxed text-ink2">Material recovery, reuse and efficient processing are central to the group’s published direction.</p></div><div><h3 className="text-lg">Practical innovation</h3><p className="mt-2 text-sm leading-relaxed text-ink2">Better coordination and simpler documentation, informed by the people doing the work.</p></div><div><h3 className="text-lg">Community progress</h3><p className="mt-2 text-sm leading-relaxed text-ink2">Rural development and local participation alongside industrial growth.</p></div></div></div></div></section>
+    <section id="contact" className="site-section"><div className="contact-panel"><div><p className="site-kicker">LET’S BUILD YOUR NEXT SUPPLY.</p><h2>A requirement today.<br/>A relationship for tomorrow.</h2><p>Share your material, grade, quantity and destination.</p></div><div className="flex flex-col items-start gap-4"><a href="mailto:info@b2allcommo.com" className="btn btn-filled btn-lg"><Mail size={18}/>Email our team<ArrowUpRight size={18}/></a><a href="#materials" className="inline-flex items-center gap-2 text-sm">Or build an enquiry online<ArrowRight size={16}/></a></div></div></section>
+  </div>;
 }

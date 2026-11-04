@@ -36,7 +36,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
       </nav>
 
       {toSign.length > 0 && tab !== "documents" && (
-        <Link href={`/account/contracts/${toSign[0].id}`} className="mt-6 flex items-center gap-4 rounded-[14px] bg-rail p-5 text-white"><FileSignature size={26} /><div className="flex-1"><div className="font-medium">Contract {toSign[0].number} is waiting for your signature</div><div className="text-sm text-rail-ink">Review and sign securely from your account.</div></div><span className="btn btn-filled">Review</span></Link>
+        <Link href={`/account/contracts/${toSign[0].id}`} className="mt-6 flex items-center gap-4 rounded-[14px] bg-pri-c p-5 text-on-pri-c"><FileSignature size={26} /><div className="flex-1"><div className="font-medium">Contract {toSign[0].number} is waiting for your signature</div><div className="text-sm text-rail-ink">Review and sign securely from your account.</div></div><span className="btn btn-filled">Review</span></Link>
       )}
 
       {tab === "overview" && (<div className="mt-6 space-y-6">

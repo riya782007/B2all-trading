@@ -4,7 +4,7 @@ export default function Logo({ tone = "ink", size = "md" }: { tone?: "ink" | "li
   return (
     <span className="inline-flex items-center gap-2.5">
       <span className={`grid ${box} place-items-center rounded-[7px] bg-act font-extrabold text-on-act shadow-[inset_0_-2px_0_rgb(0_0_0/.15)]`}>B2</span>
-      <span className={`font-extrabold tracking-tight ${size === "lg" ? "text-2xl" : "text-lg"} ${tone === "light" ? "text-rail-hi" : "text-ink"}`}>B2All</span>
+      <span className={`font-semibold tracking-tight ${size === "lg" ? "text-2xl" : "text-lg"} ${tone === "light" ? "text-rail-hi" : "text-ink"}`}>B2All<span className="mt-0.5 block text-[8px] font-medium uppercase tracking-[.2em] opacity-70">Commo Trade</span></span>
     </span>
   );
 }
