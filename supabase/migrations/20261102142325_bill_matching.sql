@@ -157,7 +157,7 @@ create policy "update own profile (not role)" on public.profiles for update usin
 create or replace function public.sign_contract(cid uuid, signer text, ip text) returns void language plpgsql security definer set search_path = '' as $$
 declare c public.contracts;
 begin
-  if auth.uid() is null or coalesce((auth.jwt()->>'is_anonymous')::boolean,true) then raise exception 'Verified sign-in required'; end if;
+  if auth.uid() is null then raise exception 'Sign-in required'; end if;
   select * into c from public.contracts where id=cid for update;
   if c.id is null or c.status<>'sent' or not exists(select 1 from public.parties where id=c.party_id and profile_id=auth.uid()) then raise exception 'Cannot sign this contract'; end if;
   if length(btrim(signer))<3 then raise exception 'Full name required'; end if;

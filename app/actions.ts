@@ -26,8 +26,7 @@ function normalisePhone(raw: string) {
 
 export async function customerLogin(prev: FormState, fd: FormData): Promise<FormState> {
   const name = str(fd, "name"), city = str(fd, "city"), raw = str(fd, "phone"), next = str(fd, "next");
-  const email = str(fd,"email").toLowerCase();
-  const values = { name, city, phone: raw, next, email };
+  const values = { name, city, phone: raw, next };
   const phone = normalisePhone(raw);
   if (name.length < 2) return { error: "Please enter your name.", values };
   if (!phone) return { error: "Enter a valid 10-digit mobile number.", values };
@@ -36,20 +35,15 @@ export async function customerLogin(prev: FormState, fd: FormData): Promise<Form
   let id: string;
   if (hasSupabase) {
     const sb = await supabaseServer();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter your work email to receive a sign-in code.", values };
-    const otp = str(fd,"otp");
-    if (!otp) {
-      const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: `${(await headers()).get("origin") || "https://b2alltrading.vercel.app"}/auth/callback`, data: { name, phone, city } } });
-      return error ? { error: "Could not send a code. Please try again shortly or contact B2All.", values } : { otpSent: true, ok: "Check your email. Open the secure sign-in link, or enter the code if your email includes one.", values };
+    let { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      const cur = await s.one("profiles", user.id);
+      if (cur && cur.role !== "customer") { await sb.auth.signOut(); user = null; } // an owner or staff session: start a separate customer session
     }
-    const { data, error } = await sb.auth.verifyOtp({ email, token: otp, type: "email" });
-    if (error || !data.user) return { error: "The code is invalid or has expired. Please try again.", otpSent: true, values };
-    const user = data.user;
-    const existingStaff = await s.one("profiles",user.id);
-    if (existingStaff && existingStaff.role !== "customer") redirect("/owner");
+    if (!user) { const r = await sb.auth.signInAnonymously(); if (r.error || !r.data.user) return { error: "Sign-in is not available right now. Please try again shortly.", values }; user = r.data.user; }
     id = user.id;
     const existing = await s.one("profiles", id);
-    if (existing) await s.update("profiles", id, { phone, name, city, email }); else await s.insert("profiles", { id, phone, name, city, email, role: "customer" });
+    if (existing) await s.update("profiles", id, { phone, name, city }); else await s.insert("profiles", { id, phone, name, city, role: "customer" });
   } else {
     const found = (await s.all("profiles", { phone })).find((p) => p.role === "customer");
     if (found) { id = found.id; await s.update("profiles", id, { name, city }); } else id = (await s.insert("profiles", { phone, name, city, role: "customer" })).id;

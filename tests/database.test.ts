@@ -63,7 +63,7 @@ test('PostgreSQL migration: partial bills, retry, rollback, authorization and im
   await db.exec("update profiles set city='Raigarh' where id=auth.uid()");
   await assert.rejects(()=>db.exec("update profiles set role='owner' where id=auth.uid()"),/Only an owner or admin/);
   await db.exec(`select set_config('test.uid','${owner}',false);select set_config('test.jwt','{"is_anonymous":true}',false)`);
-  await assert.rejects(()=>db.query("select sign_contract($1::uuid,'Someone','unknown')",[crypto.randomUUID()]),/Verified sign-in/);
+  await assert.rejects(()=>db.query("select sign_contract($1::uuid,'Someone','unknown')",[crypto.randomUUID()]),/Cannot sign this contract/);
   await db.exec(`select set_config('test.uid','00000000-0000-0000-0000-000000000099',false)`);
   await assert.rejects(()=>post({...b,request_id:crypto.randomUUID()}),/Staff sign-in/);
  } finally { await db.close(); }

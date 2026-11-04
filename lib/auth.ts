@@ -15,7 +15,7 @@ export const getMe = cache(async (): Promise<Me | null> => {
   if (hasSupabase) {
     const sb = await supabaseServer();
     const { data: { user } } = await sb.auth.getUser();
-    if (user && !user.is_anonymous) profile = await s.one("profiles", user.id);
+    if (user) profile = await s.one("profiles", user.id);
   } else {
     const id = (await cookies()).get("b2_session")?.value;
     if (id) profile = await s.one("profiles", id);
