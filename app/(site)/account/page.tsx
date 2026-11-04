@@ -36,19 +36,19 @@ export default async function Account({ searchParams }: { searchParams: Promise<
       </nav>
 
       {toSign.length > 0 && tab !== "documents" && (
-        <Link href={`/account/contracts/${toSign[0].id}`} className="mt-6 flex items-center gap-4 rounded-[14px] bg-rail p-5 text-white"><FileSignature size={26} /><div className="flex-1"><div className="font-medium">Contract {toSign[0].number} is waiting for your signature</div><div className="text-sm text-rail-ink">Review and sign in under a minute.</div></div><span className="btn btn-filled">Review</span></Link>
+        <Link href={`/account/contracts/${toSign[0].id}`} className="mt-6 flex items-center gap-4 rounded-[14px] bg-pri-c p-5 text-on-pri-c"><FileSignature size={26} /><div className="flex-1"><div className="font-medium">Contract {toSign[0].number} is waiting for your signature</div><div className="text-sm text-rail-ink">Review and sign securely from your account.</div></div><span className="btn btn-filled">Review</span></Link>
       )}
 
       {tab === "overview" && (<div className="mt-6 space-y-6">
-        {!ins || !ins.orders.length ? <Empty icon={Sparkles} title="Your buying story starts here">Once you place orders, you'll see what you buy most, how often, and when you're likely to need more.</Empty> : (<>
+        {!ins || !ins.orders.length ? <Empty icon={Sparkles} title="Your supply desk is ready">Once you place orders, you will see what you buy most, how often, and when you are likely to need more.</Empty> : (<>
           <div className="statrow">
             <Card icon={TrendingUp} label="Bought this year" value={inr(ins.spendFY)} hint={`${ins.orders.length} orders`} />
-            <Card icon={Package} label="Your top material" value={ins.top?.m.name ?? "-"} hint={ins.top ? `${num(ins.top.qty)} ${ins.top.m.unit} so far` : ""} />
-            <Card icon={Repeat} label="You usually order" value={ins.avgGap ? `every ${ins.avgGap} days` : "-"} hint={ins.nextExpected ? `Next likely around ${sdate(ins.nextExpected)}` : "Order again to see your rhythm"} />
+            <Card icon={Package} label="Most ordered material" value={ins.top?.m.name ?? "-"} hint={ins.top ? `${num(ins.top.qty)} ${ins.top.m.unit} so far` : ""} />
+            <Card icon={Repeat} label="Typical reorder interval" value={ins.avgGap ? `every ${ins.avgGap} days` : "-"} hint={ins.nextExpected ? `Next likely around ${sdate(ins.nextExpected)}` : "Order again to see your rhythm"} />
             <Card icon={Truck} label="Typical order" value={`${num(ins.avgOrder)} ${ins.top?.m.unit ?? "MT"}`} hint={ins.outstanding > 0 ? `${inr(ins.outstanding)} to pay` : "Nothing due"} />
           </div>
           {ins.top && ins.nextExpected && (
-            <div className="flex flex-wrap items-center gap-4 rounded-[14px] bg-act/25 p-5 ring-1 ring-act"><Repeat size={24} /><div className="flex-1"><div className="font-medium">Time to restock {ins.top.m.name}?</div><div className="text-sm opacity-80">Based on your last orders, you usually need about {num(ins.avgOrder)} {ins.top.m.unit} around {sdate(ins.nextExpected)}.</div></div><Link href={`/basket?add=${ins.top.m.id}&qty=${Math.round(ins.avgOrder)}`} className="btn btn-filled">Reorder</Link></div>)}
+            <div className="flex flex-wrap items-center gap-4 rounded-[14px] bg-pri-c p-5 ring-1 ring-act"><Repeat size={24} /><div className="flex-1"><div className="font-medium">Planning more {ins.top.m.name}?</div><div className="text-sm opacity-80">Based on your last orders, you usually need about {num(ins.avgOrder)} {ins.top.m.unit} around {sdate(ins.nextExpected)}.</div></div><Link href={`/basket?add=${ins.top.m.id}&qty=${Math.round(ins.avgOrder)}`} className="btn btn-filled">Reorder</Link></div>)}
           <div className="grid gap-3 lg:grid-cols-2">
             <div className="card p-5"><h2 className="text-[1.15rem]">What you buy</h2><div className="mt-4 space-y-3">{ins.byMat.map((x) => <div key={x.m.id}><div className="mb-1 flex justify-between text-sm"><span>{x.m.name}</span><span className="text-ink2">{num(x.qty)} {x.m.unit} · {Math.round((x.qty / ins.totalQty) * 100)}%</span></div><Bar pct={(x.qty / ins.totalQty) * 100} /></div>)}</div></div>
             <div className="card p-5"><h2 className="text-[1.15rem]">Last six months</h2><div className="mt-5 flex h-40 items-end gap-3" role="img" aria-label="Quantity ordered per month">{ins.monthly.map((m) => <div key={m.mo} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="w-full rounded-t-[4px] bg-ink/85" style={{ height: `${(m.qty / maxM) * 85}%`, minHeight: m.qty ? 6 : 2 }} title={`${num(m.qty)}`} /><span className="text-xs text-ink2">{new Date(m.mo + "-01").toLocaleDateString("en-IN", { month: "short" })}</span></div>)}</div></div>

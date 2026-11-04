@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { aiDraftOffer, sendOffer, type FormState } from "@/app/actions";
 type C = { id: string; name: string; city: string; hasEmail: boolean; hasPhone: boolean };
@@ -10,9 +10,8 @@ const T = [
 ];
 export default function Composer({ customers, ai, gmail }: { customers: C[]; ai: boolean; gmail: boolean }) {
   const [title, setTitle] = useState(T[0][1]); const [body, setBody] = useState(T[0][2]);
-  const [to, setTo] = useState<Set<string>>(new Set(customers.map((c) => c.id))); const [channel, setChannel] = useState("whatsapp");
-  const [d, draft, drafting] = useActionState<FormState, FormData>(aiDraftOffer, {});
-  useEffect(() => { if (d.text) setBody(d.text); }, [d.text]);
+  const [to, setTo] = useState<Set<string>>(new Set(customers.map((c) => c.id))); const [channel, setChannel] = useState("email");
+  const [d, draft, drafting] = useActionState<FormState, FormData>(async (prev,fd) => { const result = await aiDraftOffer(prev,fd); if (result.text) setBody(result.text); return result; }, {});
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
       <form action={sendOffer} className="card space-y-5 p-6">
@@ -23,7 +22,7 @@ export default function Composer({ customers, ai, gmail }: { customers: C[]; ai:
           <div className="mt-2 grid grid-cols-2 gap-2"><input name="code" placeholder="Voucher code (optional)" className="input" /><input name="valid_till" type="date" className="input" aria-label="Valid till" /></div></div>
         <div><div className="mb-2 text-sm font-medium text-ink2">2 · Who gets it · {to.size} of {customers.length}</div>
           <div className="mb-2 flex gap-2"><button type="button" className="btn btn-text btn-sm" onClick={() => setTo(new Set(customers.map((c) => c.id)))}>Everyone</button><button type="button" className="btn btn-text btn-sm" onClick={() => setTo(new Set())}>Nobody</button></div>
-          <div className="max-h-60 space-y-1 overflow-auto rounded-xl border border-line p-2">{customers.map((c) => <label key={c.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-s2"><input type="checkbox" name="to" value={c.id} checked={to.has(c.id)} onChange={() => { const n = new Set(to); n.has(c.id) ? n.delete(c.id) : n.add(c.id); setTo(n); }} className="size-5 accent-[var(--pri)]" /><span className="flex-1">{c.name}</span><span className="text-sm text-ink2">{c.city}</span></label>)}</div></div>
+          <div className="max-h-60 space-y-1 overflow-auto rounded-xl border border-line p-2">{customers.map((c) => <label key={c.id} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-s2"><input type="checkbox" name="to" value={c.id} checked={to.has(c.id)} onChange={() => { const n = new Set(to); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); setTo(n); }} className="size-5 accent-[var(--pri)]" /><span className="flex-1">{c.name}</span><span className="text-sm text-ink2">{c.city}</span></label>)}</div></div>
         <div><div className="mb-2 text-sm font-medium text-ink2">3 · How</div>
           <div className="grid grid-cols-3 gap-2">{[["whatsapp", "WhatsApp"], ["email", gmail ? "Email (auto)" : "Email"], ["sms", "SMS"]].map(([k, l]) => <label key={k} className={`cursor-pointer rounded-xl border p-3 text-center text-sm font-medium ${channel === k ? "border-ink bg-ink text-s1" : "border-line"}`}><input type="radio" name="channel" value={k} checked={channel === k} onChange={() => setChannel(k)} className="sr-only" />{l}</label>)}</div></div>
         <button className="btn btn-filled btn-lg w-full" disabled={!to.size || !body.trim()}>Send to {to.size} customer{to.size === 1 ? "" : "s"}</button>

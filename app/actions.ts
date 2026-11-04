@@ -10,10 +10,11 @@ import { aiWrite, hasGmail, sendMail } from "@/lib/integrations";
 import { stateFromGstin, today } from "@/lib/money";
 import type { Kind } from "@/lib/types";
 
-export type FormState = { error?: string; warnings?: string[]; ok?: string; values?: Record<string, string>; text?: string };
+export type FormState = { error?: string; otpSent?: boolean; warnings?: string[]; ok?: string; values?: Record<string, string>; text?: string };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const n = (fd: FormData, k: string) => Number(str(fd, k).replace(/,/g, ""));
 const done = (path = "/owner") => { revalidatePath("/", "layout"); return path; };
+const html = (value: string) => value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const msg = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong. Please try again.");
 
 /* ───────── customers: sign in, enquiry, profile, contract ───────── */
@@ -25,7 +26,8 @@ function normalisePhone(raw: string) {
 
 export async function customerLogin(prev: FormState, fd: FormData): Promise<FormState> {
   const name = str(fd, "name"), city = str(fd, "city"), raw = str(fd, "phone"), next = str(fd, "next");
-  const values = { name, city, phone: raw, next };
+  const email = str(fd,"email").toLowerCase();
+  const values = { name, city, phone: raw, next, email };
   const phone = normalisePhone(raw);
   if (name.length < 2) return { error: "Please enter your name.", values };
   if (!phone) return { error: "Enter a valid 10-digit mobile number.", values };
@@ -34,15 +36,20 @@ export async function customerLogin(prev: FormState, fd: FormData): Promise<Form
   let id: string;
   if (hasSupabase) {
     const sb = await supabaseServer();
-    let { data: { user } } = await sb.auth.getUser();
-    if (user) {
-      const cur = await s.one("profiles", user.id);
-      if (cur && cur.role !== "customer") { await sb.auth.signOut(); user = null; } // an owner or staff session: start a separate customer session
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter your work email to receive a sign-in code.", values };
+    const otp = str(fd,"otp");
+    if (!otp) {
+      const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: `${(await headers()).get("origin") || "https://b2alltrading.vercel.app"}/auth/callback`, data: { name, phone, city } } });
+      return error ? { error: "Could not send a code. Please try again shortly or contact B2All.", values } : { otpSent: true, ok: "Check your email. Open the secure sign-in link, or enter the code if your email includes one.", values };
     }
-    if (!user) { const r = await sb.auth.signInAnonymously(); if (r.error || !r.data.user) return { error: "Sign-in is not available right now. Please try again shortly.", values }; user = r.data.user; }
+    const { data, error } = await sb.auth.verifyOtp({ email, token: otp, type: "email" });
+    if (error || !data.user) return { error: "The code is invalid or has expired. Please try again.", otpSent: true, values };
+    const user = data.user;
+    const existingStaff = await s.one("profiles",user.id);
+    if (existingStaff && existingStaff.role !== "customer") redirect("/owner");
     id = user.id;
     const existing = await s.one("profiles", id);
-    if (existing) await s.update("profiles", id, { phone, name, city }); else await s.insert("profiles", { id, phone, name, city, role: "customer" });
+    if (existing) await s.update("profiles", id, { phone, name, city, email }); else await s.insert("profiles", { id, phone, name, city, email, role: "customer" });
   } else {
     const found = (await s.all("profiles", { phone })).find((p) => p.role === "customer");
     if (found) { id = found.id; await s.update("profiles", id, { name, city }); } else id = (await s.insert("profiles", { phone, name, city, role: "customer" })).id;
@@ -50,7 +57,7 @@ export async function customerLogin(prev: FormState, fd: FormData): Promise<Form
   }
   const prof = await s.one("profiles", id);
   if (prof && !(await s.all("parties", { profile_id: id })).length) await s.insert("parties", { name: prof.company || prof.name, type: "customer", phone, city, profile_id: id, credit_days: 15 });
-  redirect(next.startsWith("/") ? next : "/account");
+  redirect(next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : "/account");
 }
 
 export async function signOut() {
@@ -66,7 +73,8 @@ export async function submitEnquiry(payload: string, note: string): Promise<Form
   try { items = JSON.parse(payload); } catch { return { error: "Something went wrong. Please try again." }; }
   const s = await getStore();
   const mats = await s.all("materials");
-  const clean = items.filter((i) => i.qty > 0 && mats.some((m) => m.id === i.material_id));
+  if (!Array.isArray(items) || items.length > 100) return { error: "Invalid enquiry. Choose up to 100 materials." };
+  const clean = items.filter((i) => i && Number.isFinite(i.qty) && i.qty > 0 && mats.some((m) => m.id === i.material_id && m.active));
   if (!clean.length) return { error: "Add at least one material with a quantity." };
   const e = await s.insert("enquiries", { customer_id: me.profile.id, status: "new", note: note.slice(0, 500) || null });
   for (const i of clean) await s.insert("enquiry_items", { enquiry_id: e.id, material_id: i.material_id, qty: i.qty, unit: mats.find((m) => m.id === i.material_id)!.unit });
@@ -170,7 +178,7 @@ export async function createInvoiceAction(_: FormState, fd: FormData): Promise<F
   if (!o) return { error: "Choose an order." };
   const me = await mustStaff(o.kind === "sale" ? "sales" : "purchase", "create");
   let id: string;
-  try { id = (await D.createInvoice(s, me.profile.name, { order_id: o.id, delivery_ids: fd.getAll("delivery_id").map(String), date: str(fd, "date") || today(), supplier_bill_no: str(fd, "supplier_bill_no"), rate: str(fd, "rate") ? n(fd, "rate") : undefined })).id; }
+  try { id = (await D.createInvoice(s, me.profile.name, { order_id: o.id, delivery_ids: fd.getAll("delivery_id").map(String), delivery_quantities: Object.fromEntries(fd.getAll("delivery_id").map(String).map((id) => [id, n(fd, `qty_${id}`)])), request_id: str(fd, "request_id"), bill_total: str(fd,"bill_total") ? n(fd,"bill_total") : undefined, date: str(fd, "date") || today(), supplier_bill_no: str(fd, "supplier_bill_no"), rate: str(fd, "rate") ? n(fd, "rate") : undefined })).id; }
   catch (e) { return { error: msg(e) }; }
   redirect(done(`/owner/invoices/${id}`));
 }
@@ -179,8 +187,8 @@ export async function moneyAction(_: FormState, fd: FormData): Promise<FormState
   const me = await mustStaff("accounts", "create");
   const s = await getStore(); const type = str(fd, "type");
   try {
-    if (type === "expense") await D.recordExpense(s, me.profile.name, { ledger: str(fd, "ledger") || "Office expenses", amount: n(fd, "amount"), mode: str(fd, "mode") === "Cash" ? "Cash" : "Bank", date: str(fd, "date") || today(), narration: str(fd, "narration") });
-    else await D.recordMoney(s, me.profile.name, { direction: type === "payment" ? "out" : "in", party_id: str(fd, "party_id"), amount: n(fd, "amount"), mode: str(fd, "mode") === "Cash" ? "Cash" : "Bank", date: str(fd, "date") || today(), invoice_id: str(fd, "invoice_id") || undefined, narration: str(fd, "narration") });
+    if (type === "expense") await D.recordExpense(s, me.profile.name, { ledger: str(fd, "ledger") || "Office expenses", amount: n(fd, "amount"), mode: str(fd, "mode") === "Cash" ? "Cash" : "Bank", request_id:str(fd,"request_id"), date: str(fd, "date") || today(), narration: str(fd, "narration") });
+    else await D.recordMoney(s, me.profile.name, { direction: type === "payment" ? "out" : "in", party_id: str(fd, "party_id"), amount: n(fd, "amount"), mode: str(fd, "mode") === "Cash" ? "Cash" : "Bank", request_id:str(fd,"request_id"), date: str(fd, "date") || today(), invoice_id: str(fd, "invoice_id") || undefined, narration: str(fd, "narration") });
   } catch (e) { return { error: msg(e) }; }
   redirect(done("/owner/accounts?saved=1"));
 }
@@ -194,7 +202,7 @@ export async function draftContractAction(orderId: string) {
 }
 export async function saveContractBody(id: string, fd: FormData) {
   const me = await mustStaff("sales", "edit"); const s = await getStore();
-  const c = await s.one("contracts", id); if (!c || c.status === "signed") return;
+  const c = await s.one("contracts", id); if (!c || c.status !== "draft") return;
   await s.update("contracts", id, { body: str(fd, "body") }); await D.log(s, me.profile.name, `Edited contract ${c.number}`);
   revalidatePath("/", "layout");
 }
@@ -204,7 +212,7 @@ export async function sendContractAction(id: string) {
   await s.update("contracts", id, { status: "sent", sent_at: new Date().toISOString() });
   const p = await s.one("parties", c.party_id);
   const site = (await headers()).get("origin") ?? "";
-  const mailed = p?.email ? await sendMail(p.email, `Contract ${c.number} from B2All for your signature`, `<p>Dear ${p.name},</p><p>Please review and sign contract <b>${c.number}</b> on your B2All page: <a href="${site}/account/contracts/${c.id}">${site}/account/contracts/${c.id}</a></p><p>Thank you,<br>B2All Commo</p>`) : false;
+  const mailed = p?.email ? await sendMail(p.email, `Contract ${c.number} from B2All for your signature`, `<p>Dear ${html(p.name)},</p><p>Please review and sign contract <b>${html(c.number)}</b> on your B2All page: <a href="${site}/account/contracts/${c.id}">${site}/account/contracts/${c.id}</a></p><p>Thank you,<br>B2All Commo</p>`) : false;
   await D.log(s, me.profile.name, `Sent contract ${c.number} for signing${mailed ? " by email" : ""}`);
   redirect(done(`/owner/contracts/${id}?sent=${mailed ? "email" : "portal"}`));
 }
@@ -240,7 +248,8 @@ export async function savePartyAction(_: FormState, fd: FormData): Promise<FormS
   const gstin = str(fd, "gstin").toUpperCase();
   if (gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(gstin)) return { error: "That GSTIN does not look right." };
   if (str(fd, "pincode") && !/^[1-9]\d{5}$/.test(str(fd, "pincode"))) return { error: "A PIN code has 6 digits." };
-  const data = { name: str(fd, "name"), type, gstin: gstin || null, state_code: str(fd, "state_code") || stateFromGstin(gstin) || null, phone: str(fd, "phone") || null, email: str(fd, "email") || null, city: str(fd, "city") || null, pincode: str(fd, "pincode") || null, address: str(fd, "address") || null, credit_days: n(fd, "credit_days") || (type === "customer" ? 15 : 30) } as const;
+  const data = { name: str(fd, "name"), type, gstin: gstin || null, state_code: str(fd, "state_code") || stateFromGstin(gstin) || null, phone: str(fd, "phone") || null, email: str(fd, "email") || null, city: str(fd, "city") || null, pincode: str(fd, "pincode") || null, address: str(fd, "address") || null, credit_days: str(fd,"credit_days") === "" ? (type === "customer" ? 15 : 30) : n(fd,"credit_days") } as const;
+  if (!Number.isInteger(data.credit_days) || data.credit_days < 0 || data.credit_days > 365) return { error:"Credit days must be a whole number from 0 to 365." };
   if (data.name.length < 2) return { error: "Enter a name." };
   const id = str(fd, "id");
   if (id) { await s.update("parties", id, data); await D.log(s, me.profile.name, `Updated ${data.name}`); redirect(done(`/owner/parties/${id}`)); }
@@ -263,9 +272,9 @@ export async function sendOffer(fd: FormData) {
   let mailed = 0;
   for (const id of ids) {
     await s.insert("offer_sends", { offer_id: o.id, party_id: id, channel, sent_at: new Date().toISOString() });
-    if (channel === "email" && hasGmail) { const p = await s.one("parties", id); if (p?.email && (await sendMail(p.email, title, `<p>${body.replace(/\n/g, "<br>")}</p>${o.code ? `<p><b>Code: ${o.code}</b></p>` : ""}`))) mailed++; }
+    if (channel === "email" && hasGmail) { const p = await s.one("parties", id); if (p?.email && (await sendMail(p.email, title, `<p>${html(body).replace(/\n/g, "<br>")}</p>${o.code ? `<p><b>Code: ${html(o.code)}</b></p>` : ""}`))) mailed++; }
   }
-  await D.log(s, me.profile.name, `Sent offer "${title}" to ${ids.length} by ${channel}${mailed ? ` (${mailed} emailed)` : ""}`);
+  await D.log(s, me.profile.name, `Prepared offer "${title}" for ${ids.length} by ${channel}${mailed ? ` (${mailed} emailed)` : ""}`);
   redirect(done(`/owner/offers?sent=${o.id}&channel=${channel}&mailed=${mailed}`));
 }
 
@@ -319,6 +328,7 @@ export async function saveMaterial(fd: FormData) {
   const id = str(fd, "id");
   const data = { name: str(fd, "name"), category: str(fd, "category") || "Other", hsn: str(fd, "hsn"), gst_rate: n(fd, "gst_rate"), unit: str(fd, "unit") || "MT", opening_qty: n(fd, "opening_qty") || 0, opening_rate: n(fd, "opening_rate") || 0, note: str(fd, "note") || null, active: fd.get("active") !== "off" };
   if (!data.name) return;
+  if (![data.gst_rate,data.opening_qty,data.opening_rate].every(Number.isFinite) || data.gst_rate < 0 || data.gst_rate > 100 || data.opening_qty < 0 || data.opening_rate < 0) throw new Error("Enter valid non-negative opening values and a GST rate between 0 and 100.");
   if (id) await s.update("materials", id, data); else await s.insert("materials", data);
   await D.log(s, me.profile.name, `${id ? "Updated" : "Added"} material ${data.name}`);
   revalidatePath("/", "layout");
@@ -348,4 +358,16 @@ export async function routeForOrder(orderId: string, billDate: string): Promise<
   if (km == null) return { error: hasRoutes ? "Could not work out the road distance right now. Type it on the e-way bill as usual." : "Road distance switches on once the route key is added in Vercel." };
   const days = maxValidityDays(km);
   return { km, days, validTill: addDays(billDate || today(), days), from, to };
+}
+
+/** Explicit accountant confirmation; a file download never means that Tally imported it. */
+export async function confirmTallyImport(fd: FormData) {
+  const me = await mustStaff("accounts","export");
+  if (fd.get("confirmed") !== "on") return;
+  const s = await getStore();
+  const ids = new Set(fd.getAll("voucher_id").map(String));
+  const vouchers = (await s.all("vouchers")).filter(v=>ids.has(v.id));
+  for (const v of vouchers) await s.update("vouchers",v.id,{tally_exported:true});
+  await D.log(s,me.profile.name,`Confirmed ${vouchers.length} vouchers imported in Tally after checking import results`);
+  revalidatePath("/owner/accounts/tally");
 }

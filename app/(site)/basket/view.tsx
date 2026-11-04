@@ -1,24 +1,25 @@
 "use client";
 import Link from "next/link";
 import { Minus, Plus, Trash2, CircleCheck } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
-import { readBasket, writeBasket } from "@/components/site/basket";
+import { useEffect, useState, useTransition, useSyncExternalStore } from "react";
+import { readBasket, writeBasket, subscribeBasket, basketSnapshot } from "@/components/site/basket";
 import { submitEnquiry, type FormState } from "@/app/actions";
 
 type M = { id: string; name: string; category: string; unit: string };
 export default function BasketView({ materials }: { materials: M[] }) {
-  const [b, setB] = useState<Record<string, number>>({});
+  const rawBasket = useSyncExternalStore(subscribeBasket, basketSnapshot, () => "{}");
+  const b: Record<string,number> = JSON.parse(rawBasket);
   const [note, setNote] = useState("");
   const [res, setRes] = useState<FormState | null>(null);
   const [pending, start] = useTransition();
   useEffect(() => {
     const cur = readBasket(); const p = new URLSearchParams(location.search);
     const add = p.get("add"); if (add) { cur[add] = Number(p.get("qty")) || cur[add] || 100; writeBasket(cur); history.replaceState(null, "", "/basket"); }
-    setB(cur);
+    writeBasket(cur);
   }, []);
   const ids = Object.keys(b).filter((id) => materials.some((m) => m.id === id));
-  const set = (id: string, q: number) => { const n = { ...b, [id]: Math.max(0, Math.round(q)) }; setB(n); writeBasket(n); };
-  const del = (id: string) => { const n = { ...b }; delete n[id]; setB(n); writeBasket(n); };
+  const set = (id: string, q: number) => { const n = { ...b, [id]: Math.max(0, Math.round(q)) }; writeBasket(n); };
+  const del = (id: string) => { const n = { ...b }; delete n[id]; writeBasket(n); };
   if (res?.ok) return (
     <div className="card flex flex-col items-center p-10 text-center"><CircleCheck size={48} className="text-pri" /><h1 className="mt-4 text-3xl font-medium">Enquiry sent</h1><p className="mt-2 text-ink2">We will come back with a quote. Follow it from your page.</p><Link href="/account" className="btn btn-filled btn-lg mt-6">Go to my page</Link></div>
   );

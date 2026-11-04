@@ -1,3 +1,5 @@
+> Current upgrade: see [Supabase handoff](docs/SUPABASE_HANDOFF.md), [audit and release gates](docs/ERP_AUDIT.md) and [product research / priorities](docs/PRODUCT_BLUEPRINT.md). Apply the new migration in coordination with this application release. Historical setup scripts must not be rerun on the live database. The ERP is not a complete Tally replacement; the audit lists remaining capability limits.
+
 # B2All
 
 One product for B2 All Commo Trade Pvt. Ltd.:

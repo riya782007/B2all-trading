@@ -14,11 +14,11 @@ export default async function Reports() {
         {tb.rows.map((r) => <tr key={r.id}><td>{r.name}</td><td className="text-ink2">{r.grp}</td><td className="num">{r.closing > 0 ? inr(r.closing, 2) : ""}</td><td className="num">{r.closing < 0 ? inr(-r.closing, 2) : ""}</td></tr>)}
         <tr className="font-semibold"><td colSpan={2}>Total</td><td className="num">{inr(tb.dr, 2)}</td><td className="num">{inr(tb.cr, 2)}</td></tr>
       </tbody></table></div>
-      <Section title="GST by month (estimate for GSTR-3B)">
-        <div className="card overflow-x-auto"><table className="tbl min-w-[640px]"><thead><tr><th>Month</th><th className="num">Taxable sales</th><th className="num">Output GST</th><th className="num">Taxable purchases</th><th className="num">Input credit</th><th className="num">Net payable</th></tr></thead><tbody>
+      <Section title="GST recorded in the books">
+        <div className="card overflow-x-auto"><table className="tbl min-w-[640px]"><thead><tr><th>Month</th><th className="num">Taxable sales</th><th className="num">Output GST</th><th className="num">Taxable purchases</th><th className="num">Input GST recorded</th><th className="num">Book difference</th></tr></thead><tbody>
           {gst.map((g) => <tr key={g.month}><td>{new Date(g.month + "-01").toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</td><td className="num">{inr(g.sales)}</td><td className="num">{inr(g.output)}</td><td className="num">{inr(g.purchases)}</td><td className="num">{inr(g.input)}</td><td className={`num font-semibold ${g.net < 0 ? "text-pri" : ""}`}>{g.net < 0 ? `${inr(-g.net)} credit` : inr(g.net)}</td></tr>)}
         </tbody></table></div>
-        <p className="mt-2 text-sm text-ink2">An estimate from invoices recorded here. File returns from Tally or the GST portal after your accountant checks them.</p>
+        <p className="mt-2 text-sm text-ink2">Recorded input GST is not confirmed eligible ITC. Reconcile GSTR-2B, credit notes, cess and statutory adjustments in Tally with your accountant before filing.</p>
       </Section>
     </Page>
   );

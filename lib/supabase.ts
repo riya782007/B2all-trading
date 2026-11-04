@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+if (Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) !== Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) throw new Error("Both Supabase environment variables must be configured together.");
+
 export const hasSupabase = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function supabaseServer() {

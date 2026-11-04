@@ -1,7 +1,9 @@
 import "server-only";
 import type { Store } from "./store";
-import { addDays, fy, gstSplit, r2, stateFromGstin, today } from "./money";
-import type { Company, Contract, Delivery, Entry, Invoice, Kind, Ledger, LedgerGroup, Material, Order, Party, Profile, VType, Voucher } from "./types";
+import { addDays, fy, gstSplit, moneyProduct, r2, stateFromGstin, today, validDate } from "./money";
+import type { Company, Delivery, Entry, Invoice, Kind, Ledger, LedgerGroup, Material, Order, Party, Profile, VType } from "./types";
+
+import { deliveryBalance, normaliseBillNo, q3, validateAllocations } from "./reconciliation";
 
 /* ───────────────────────── basics ───────────────────────── */
 
@@ -55,29 +57,33 @@ export async function ensureCustomerParty(s: Store, prof: Profile) {
 /* ───────────────────────── orders and deliveries ───────────────────────── */
 
 export type OrderView = Order & {
-  party: Party; material: Material; deliveries: (Delivery & { running: number })[];
+  party: Party; material: Material; deliveries: (Delivery & { running: number; billed: number; remaining: number })[];
   received: number; pending: number; over: number; pct: number; billed: number; unbilled: number; value: number;
 };
 export async function orderViews(s: Store, kind?: Kind): Promise<OrderView[]> {
   const [orders, parties, mats, dels, invs] = await Promise.all([s.all("orders"), s.all("parties"), s.all("materials"), s.all("deliveries"), s.all("invoices")]);
   return orders.filter((o) => !kind || o.kind === kind).map((o) => {
     let run = 0;
-    const d = dels.filter((x) => x.order_id === o.id).sort((a, b) => a.bill_date.localeCompare(b.bill_date) || a.created_at.localeCompare(b.created_at)).map((x) => ({ ...x, running: r2((run += Number(x.qty))) }));
-    const received = r2(run);
-    const billed = r2(invs.filter((i) => i.order_id === o.id).reduce((t, i) => t + Number(i.qty), 0));
+    const d = dels.filter((x) => x.order_id === o.id).sort((a, b) => a.bill_date.localeCompare(b.bill_date) || a.created_at.localeCompare(b.created_at)).map((x) => ({ ...x, ...deliveryBalance(x, invs), running: q3((run += Number(x.qty))) }));
+    const received = q3(run);
+    const billed = q3(invs.filter((i) => i.order_id === o.id).reduce((t, i) => t + Number(i.qty), 0));
     return {
       ...o, party: parties.find((p) => p.id === o.party_id)!, material: mats.find((m) => m.id === o.material_id)!, deliveries: d,
-      received, pending: Math.max(r2(o.qty - received), 0), over: Math.max(r2(received - o.qty), 0),
-      pct: Math.min(100, Math.round((received / Number(o.qty)) * 100)), billed, unbilled: r2(received - billed), value: r2(o.qty * o.rate),
+      received, pending: Math.max(q3(o.qty - received), 0), over: Math.max(q3(received - o.qty), 0),
+      pct: Math.min(100, Math.round((received / Number(o.qty)) * 100)), billed, unbilled: q3(received - billed), value: r2(o.qty * o.rate),
     };
   }).sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at));
 }
 export const orderView = async (s: Store, id: string) => (await orderViews(s)).find((o) => o.id === id);
 
 export async function createOrder(s: Store, by: string, d: { kind: Kind; party_id: string; material_id: string; qty: number; rate: number; number?: string; terms?: string; enquiry_id?: string; date?: string }) {
-  if (!(d.qty > 0)) throw new Error("Quantity must be more than zero.");
-  if (!(d.rate >= 0)) throw new Error("Enter a rate.");
+  if (!Number.isFinite(d.qty) || q3(d.qty) !== d.qty || !(d.qty > 0)) throw new Error("Quantity must be more than zero.");
+  if (!Number.isFinite(d.rate) || !(d.rate >= 0)) throw new Error("Enter a rate.");
+  const party = await s.one("parties", d.party_id), material = await s.one("materials", d.material_id);
+  if (!party || party.type !== (d.kind === "sale" ? "customer" : "supplier")) throw new Error("Choose the correct customer or supplier.");
+  if (!material?.active) throw new Error("Choose an active material.");
   const date = d.date || today();
+  if (!validDate(date)) throw new Error("Enter a valid order date.");
   let num = d.number?.trim() || "";
   if (num) { if ((await s.all("orders", { number: num })).length) throw new Error(`Order number ${num} already exists.`); }
   else do { num = await number(s, d.kind === "sale" ? "so" : "po", d.kind === "sale" ? "SO" : "PO", date); } while ((await s.all("orders", { number: num })).length);
@@ -100,20 +106,22 @@ export async function checkDelivery(s: Store, i: DeliveryInput) {
   if (!o) return { errors: ["Choose an order."], warnings };
   if (o.status === "closed") errors.push(`${o.number} is closed.`);
   if (!i.bill_no.trim()) errors.push("Enter the bill or challan number.");
-  if (!i.bill_date) errors.push("Enter the date.");
-  if (!(i.qty > 0)) errors.push("Quantity must be more than zero.");
+  if (!validDate(i.bill_date)) errors.push("Enter the date.");
+  if (!Number.isFinite(i.qty) || q3(i.qty) !== i.qty || !(i.qty > 0)) errors.push("Quantity must be more than zero.");
   if (!i.vehicle_no.trim()) errors.push("Enter the vehicle number.");
   const all = await orderViews(s);
   const dup = all.filter((x) => x.party_id === o.party_id).flatMap((x) => x.deliveries).find((d) => d.bill_no.trim().toLowerCase() === i.bill_no.trim().toLowerCase());
   if (dup) errors.push(`Bill ${i.bill_no} is already entered for ${o.party.name}.`);
   if (i.vehicle_no && !/^[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{4}$/.test(cleanVehicle(i.vehicle_no))) warnings.push("The vehicle number does not look like an Indian registration. Please check it.");
-  const after = r2(o.received + (i.qty || 0));
-  if (after > o.qty) warnings.push(`This takes ${o.number} to ${after} ${o.material.unit}, ${r2(after - o.qty)} more than the ordered ${o.qty}.`);
+  const after = q3(o.received + (i.qty || 0));
+  if (after > o.qty) warnings.push(`This takes ${o.number} to ${after} ${o.material.unit}, ${q3(after - o.qty)} more than the ordered ${o.qty}.`);
   if (i.qty * o.rate > EWAY_LIMIT && !i.eway_no) warnings.push("Value is above ₹50,000 but there is no e-way bill number.");
   if (i.eway_valid_till && i.bill_date && i.eway_valid_till < i.bill_date) warnings.push("The e-way bill ends before the bill date.");
   return { errors, warnings };
 }
 export async function addDelivery(s: Store, by: string, i: DeliveryInput) {
+  const check = await checkDelivery(s, i);
+  if (check.errors.length) throw new Error(check.errors.join(" "));
   const o = await s.one("orders", i.order_id);
   const d = await s.insert("deliveries", { order_id: i.order_id, bill_no: i.bill_no.trim(), bill_date: i.bill_date, vehicle_no: cleanVehicle(i.vehicle_no), qty: i.qty, eway_no: i.eway_no?.trim() || null, eway_valid_till: i.eway_valid_till || null, note: i.note || null, entered_by: by });
   await log(s, by, `${o?.kind === "sale" ? "Dispatched" : "Received"} ${i.qty} on ${o?.number} (bill ${i.bill_no}, ${cleanVehicle(i.vehicle_no)})`);
@@ -123,45 +131,68 @@ export async function addDelivery(s: Store, by: string, i: DeliveryInput) {
 /* ───────────────────────── vouchers (double entry) ───────────────────────── */
 
 const VPREFIX: Record<VType, string> = { sales: "SAL", purchase: "PUR", receipt: "RCT", payment: "PMT", journal: "JRN", contra: "CNT" };
-export async function postVoucher(s: Store, by: string, v: { type: VType; date: string; party_id?: string | null; invoice_id?: string | null; narration: string; entries: Entry[]; number?: string }) {
-  const entries = v.entries.filter((e) => e.dr || e.cr).map((e) => ({ ledger_id: e.ledger_id, dr: r2(e.dr || 0), cr: r2(e.cr || 0) }));
+export type VoucherInput = { type: VType; date: string; party_id?: string | null; invoice_id?: string | null; narration: string; entries: Entry[]; number?: string; request_id?: string };
+export async function postVoucher(s: Store, by: string, v: VoucherInput) {
+  if (!validDate(v.date)) throw new Error("Enter a valid voucher date.");
+  const ledgers = await s.all("ledgers");
+  if (v.entries.some((e) => !Number.isFinite(e.dr) || !Number.isFinite(e.cr) || e.dr < 0 || e.cr < 0 || (e.dr > 0 && e.cr > 0) || !ledgers.some((l) => l.id === e.ledger_id))) throw new Error("Each entry needs an existing ledger and a positive debit or credit, never both.");
+  const entries = v.entries.filter((e) => e.dr || e.cr).map((e) => ({ ledger_id: e.ledger_id, dr: r2(e.dr), cr: r2(e.cr) }));
   const dr = r2(entries.reduce((t, e) => t + e.dr, 0)), cr = r2(entries.reduce((t, e) => t + e.cr, 0));
   if (!entries.length || dr <= 0) throw new Error("A voucher needs an amount.");
   if (dr !== cr) throw new Error(`Debit (${dr}) and credit (${cr}) must be equal.`);
-  const vch = await s.insert("vouchers", { number: v.number || (await number(s, `v${v.type}`, VPREFIX[v.type], v.date)), type: v.type, date: v.date, party_id: v.party_id || null, invoice_id: v.invoice_id || null, narration: v.narration, entries, amount: dr, created_by: by, tally_exported: false });
+  if (s.postVoucher) return s.postVoucher({ ...v, entries });
+  if (v.request_id) { const existing = (await s.all("vouchers",{request_id:v.request_id}))[0]; if (existing) return existing; }
+  const vch = await s.insert("vouchers", { ...(v.request_id ? {request_id:v.request_id} : {}), number: v.number || (await number(s, `v${v.type}`, VPREFIX[v.type], v.date)), type: v.type, date: v.date, party_id: v.party_id || null, invoice_id: v.invoice_id || null, narration: v.narration, entries, amount: dr, created_by: by, tally_exported: false });
   await log(s, by, `Posted ${v.type} voucher ${vch.number} for ${dr}`);
   return vch;
 }
-export async function recordMoney(s: Store, by: string, d: { direction: "in" | "out"; party_id: string; amount: number; mode: "Bank" | "Cash"; date: string; invoice_id?: string; narration?: string }) {
-  if (!(d.amount > 0)) throw new Error("Enter an amount.");
+export async function recordMoney(s: Store, by: string, d: { direction: "in" | "out"; party_id: string; amount: number; mode: "Bank" | "Cash"; date: string; invoice_id?: string; narration?: string; request_id?: string }) {
+  if (!Number.isFinite(d.amount) || !(d.amount > 0)) throw new Error("Enter an amount.");
   const p = await s.one("parties", d.party_id); if (!p) throw new Error("Choose a party.");
+  if (d.request_id) { const existing = (await s.all("vouchers",{request_id:d.request_id}))[0]; if (existing) return existing; }
+  if (d.invoice_id) {
+    const inv = await s.one("invoices", d.invoice_id);
+    if (!inv || inv.party_id !== p.id || inv.kind !== (d.direction === "in" ? "sale" : "purchase")) throw new Error("This bill does not belong to the selected party or payment direction.");
+    const paid = (await s.all("vouchers",{invoice_id:inv.id})).filter(v=>v.type === "receipt" || v.type === "payment").reduce((n,v)=>n+v.amount,0);
+    if (r2(d.amount) > r2(inv.total-paid)) throw new Error("This exceeds the bill balance. Record any advance separately on account.");
+  }
   const pl = await partyLedger(s, p), cash = await ledger(s, d.mode);
   const entries = d.direction === "in" ? [{ ledger_id: cash.id, dr: d.amount, cr: 0 }, { ledger_id: pl.id, dr: 0, cr: d.amount }] : [{ ledger_id: pl.id, dr: d.amount, cr: 0 }, { ledger_id: cash.id, dr: 0, cr: d.amount }];
-  return postVoucher(s, by, { type: d.direction === "in" ? "receipt" : "payment", date: d.date, party_id: p.id, invoice_id: d.invoice_id, narration: d.narration || `${d.direction === "in" ? "Received from" : "Paid to"} ${p.name} by ${d.mode.toLowerCase()}`, entries });
+  return postVoucher(s, by, { type: d.direction === "in" ? "receipt" : "payment", date: d.date, party_id: p.id, invoice_id: d.invoice_id, request_id:d.request_id, narration: d.narration || `${d.direction === "in" ? "Received from" : "Paid to"} ${p.name} by ${d.mode.toLowerCase()}`, entries });
 }
-export async function recordExpense(s: Store, by: string, d: { ledger: string; amount: number; mode: "Bank" | "Cash"; date: string; narration: string }) {
+export async function recordExpense(s: Store, by: string, d: { ledger: string; amount: number; mode: "Bank" | "Cash"; date: string; narration: string; request_id?: string }) {
   const exp = await ledger(s, d.ledger), cash = await ledger(s, d.mode);
-  return postVoucher(s, by, { type: "journal", date: d.date, narration: d.narration || d.ledger, entries: [{ ledger_id: exp.id, dr: d.amount, cr: 0 }, { ledger_id: cash.id, dr: 0, cr: d.amount }] });
+  return postVoucher(s, by, { type: "journal", request_id:d.request_id, date: d.date, narration: d.narration || d.ledger, entries: [{ ledger_id: exp.id, dr: d.amount, cr: 0 }, { ledger_id: cash.id, dr: 0, cr: d.amount }] });
 }
 
 /* ───────────────────────── invoices ───────────────────────── */
 
-export async function createInvoice(s: Store, by: string, d: { order_id: string; delivery_ids: string[]; date: string; supplier_bill_no?: string; rate?: number }) {
+export type InvoiceInput = { order_id: string; delivery_ids: string[]; delivery_quantities?: Record<string, number>; date: string; supplier_bill_no?: string; rate?: number; request_id?: string; bill_total?: number };
+export async function createInvoice(s: Store, by: string, d: InvoiceInput): Promise<Invoice> {
+  if (s.postInvoice) return s.postInvoice(d);
+  if (!validDate(d.date)) throw new Error("Enter a valid bill date.");
+  if (d.request_id) { const existing = (await s.all("invoices", { request_id: d.request_id }))[0]; if (existing) return existing; }
   const o = await orderView(s, d.order_id); if (!o) throw new Error("Order not found.");
-  const dels = o.deliveries.filter((x) => d.delivery_ids.includes(x.id) && !x.invoice_id);
-  if (!dels.length) throw new Error("Select at least one dispatch or receipt that is not billed yet.");
+  const allocations = validateAllocations(o.deliveries, await s.all("invoices"), d.delivery_ids, d.delivery_quantities);
+  const dels = o.deliveries.filter((x) => d.delivery_ids.includes(x.id));
   if (o.kind === "purchase" && !d.supplier_bill_no?.trim()) throw new Error("Enter the supplier's bill number.");
   const co = await company(s);
-  const qty = r2(dels.reduce((t, x) => t + Number(x.qty), 0)), rate = d.rate ?? o.rate;
-  const taxable = r2(qty * rate);
-  const partyState = o.party.state_code || stateFromGstin(o.party.gstin) || co.state_code;
+  if (o.kind === "purchase" && (await s.all("invoices", { party_id: o.party_id, kind: "purchase" })).some((i) => fy(i.date) === fy(d.date) && normaliseBillNo(i.number) === normaliseBillNo(d.supplier_bill_no!))) throw new Error("This supplier bill is already entered for this financial year.");
+  const qty = q3(Object.values(allocations).reduce((t, x) => t + x, 0)), rate = d.rate ?? o.rate;
+  if (!Number.isFinite(rate) || rate < 0) throw new Error("Enter a valid non-negative bill rate.");
+  const taxable = moneyProduct(qty, rate);
+  const partyState = o.party.state_code || stateFromGstin(o.party.gstin);
+  if (!partyState || !co.state_code) throw new Error("Set the company and party state before calculating GST.");
   const split = gstSplit(taxable, Number(o.material.gst_rate), partyState === co.state_code);
+  if (d.bill_total !== undefined && (!Number.isFinite(d.bill_total) || Math.abs(r2(d.bill_total) - split.total) > 0.010001)) throw new Error("The printed bill total does not match the quantities, rate and GST. Check charges or deductions before posting.");
   const num = o.kind === "sale" ? await number(s, "inv", co.invoice_prefix || "INV", d.date) : d.supplier_bill_no!.trim();
+  if (split.total <= 0) throw new Error("Bill total must be positive.");
   const inv = await s.insert("invoices", {
     number: num, kind: o.kind, party_id: o.party_id, order_id: o.id, date: d.date, due_date: addDays(d.date, o.party.credit_days ?? 15), material_id: o.material_id,
-    qty, rate, gst_rate: Number(o.material.gst_rate), taxable, ...split, delivery_ids: dels.map((x) => x.id), place_of_supply: partyState,
+    company_snapshot: co, party_snapshot: o.party, material_snapshot: { name:o.material.name, hsn:o.material.hsn, unit:o.material.unit },
+    qty, rate, gst_rate: Number(o.material.gst_rate), taxable, ...split, delivery_ids: dels.map((x) => x.id), delivery_quantities: allocations, ...(d.request_id ? { request_id: d.request_id } : {}), place_of_supply: o.kind === "sale" ? partyState : co.state_code,
   });
-  for (const x of dels) await s.update("deliveries", x.id, { invoice_id: inv.id });
+  for (const x of dels) if (allocations[x.id] === x.remaining) await s.update("deliveries", x.id, { invoice_id: inv.id });
   const pl = await partyLedger(s, o.party);
   const L = async (n: string) => (await ledger(s, n)).id;
   const entries: Entry[] = o.kind === "sale"
@@ -227,13 +258,13 @@ export async function stock(s: Store) {
   return mats.filter((m) => m.active).map((m) => {
     const of = ov.filter((o) => o.material_id === m.id);
     const pur = of.filter((o) => o.kind === "purchase"), sal = of.filter((o) => o.kind === "sale");
-    const inQty = r2(pur.reduce((t, o) => t + o.received, 0)), outQty = r2(sal.reduce((t, o) => t + o.received, 0));
+    const inQty = q3(pur.reduce((t, o) => t + o.received, 0)), outQty = q3(sal.reduce((t, o) => t + o.received, 0));
     const inVal = pur.reduce((t, o) => t + o.received * o.rate, 0) + Number(m.opening_qty) * Number(m.opening_rate);
     const avg = inQty + Number(m.opening_qty) > 0 ? r2(inVal / (inQty + Number(m.opening_qty))) : 0;
-    const closing = r2(Number(m.opening_qty) + inQty - outQty);
-    const pendIn = r2(pur.filter((o) => o.status === "open").reduce((t, o) => t + o.pending, 0));
-    const pendOut = r2(sal.filter((o) => o.status === "open").reduce((t, o) => t + o.pending, 0));
-    return { ...m, inQty, outQty, closing, pendIn, pendOut, projected: r2(closing + pendIn - pendOut), avg, value: r2(Math.max(closing, 0) * avg) };
+    const closing = q3(Number(m.opening_qty) + inQty - outQty);
+    const pendIn = q3(pur.filter((o) => o.status === "open").reduce((t, o) => t + o.pending, 0));
+    const pendOut = q3(sal.filter((o) => o.status === "open").reduce((t, o) => t + o.pending, 0));
+    return { ...m, inQty, outQty, closing, pendIn, pendOut, projected: q3(closing + pendIn - pendOut), avg, value: r2(Math.max(closing, 0) * avg) };
   });
 }
 

@@ -11,7 +11,7 @@ export default async function NewVoucher({ searchParams }: { searchParams: Promi
   const pt = type === "receipt" ? "customer" : "supplier";
   return (
     <Page title={type === "receipt" ? "Payment received" : type === "payment" ? "Payment made" : "Expense"} back={{ href: "/owner/accounts", label: "Day book" }}>
-      <div className="max-w-xl"><MoneyForm type={type} parties={parties.filter((p) => p.type === pt).map((p) => ({ id: p.id, name: p.name }))} invoices={inv.filter((i) => i.balance > 0 && i.kind === (type === "receipt" ? "sale" : "purchase")).map((i) => ({ id: i.id, party: i.party_id, label: `${i.number} · balance ₹${i.balance.toLocaleString("en-IN")}`, balance: i.balance }))} expenseLedgers={ledgers.filter((l) => l.grp.includes("Expenses")).map((l) => l.name)} preset={{ party: sp.party, invoice: sp.invoice, amount: sp.amount }} /></div>
+      <div className="max-w-xl"><MoneyForm requestId={crypto.randomUUID()} type={type} parties={parties.filter((p) => p.type === pt).map((p) => ({ id: p.id, name: p.name }))} invoices={inv.filter((i) => i.balance > 0 && i.kind === (type === "receipt" ? "sale" : "purchase")).map((i) => ({ id: i.id, party: i.party_id, label: `${i.number} · balance ₹${i.balance.toLocaleString("en-IN")}`, balance: i.balance }))} expenseLedgers={ledgers.filter((l) => l.grp.includes("Expenses")).map((l) => l.name)} preset={{ party: sp.party, invoice: sp.invoice, amount: sp.amount }} /></div>
     </Page>
   );
 }
