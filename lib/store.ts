@@ -23,15 +23,21 @@ const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 const match = (row: Record<string, unknown>, m?: Record<string, unknown>) => !m || Object.entries(m).every(([k, v]) => row[k] === v);
 
+/** Same tables the database edit log watches (supabase/006_tally_offers.sql). */
+const AUDITED = new Set<Table>(["company", "ledgers", "parties", "materials", "orders", "deliveries", "invoices", "vouchers", "contracts", "bank_reco", "roles"]);
 function memoryStore(): Store {
   const M = (g.__b2mem ??= { rows: {}, counters: {} });
   const tbl = <T extends Table>(t: T) => (M.rows[t] ??= []) as Tables[T][];
+  const audit = (t: Table, action: "insert" | "update" | "delete", id: string, old_row: unknown, new_row: unknown) => {
+    if (!AUDITED.has(t)) return;
+    tbl("audit_log").push({ id: tbl("audit_log").length + 1, at: now(), actor_name: "Demo user", table_name: t, row_id: id, action, old_row: (old_row ?? null) as Record<string, unknown> | null, new_row: (new_row ?? null) as Record<string, unknown> | null });
+  };
   return {
     async all(t, m) { return structuredClone(tbl(t).filter((r) => match(r as Record<string, unknown>, m as Record<string, unknown>))); },
-    async one(t, id) { const r = tbl(t).find((x) => (x as { id: string }).id === id); return r ? structuredClone(r) : null; },
-    async insert(t, row) { const r = { id: uid(), created_at: now(), ...row } as Tables[typeof t]; tbl(t).push(r); return structuredClone(r); },
-    async update(t, id, patch) { const r = tbl(t).find((x) => (x as { id: string }).id === id); if (r) Object.assign(r, patch); },
-    async remove(t, id) { const a = tbl(t); const i = a.findIndex((x) => (x as { id: string }).id === id); if (i >= 0) a.splice(i, 1); },
+    async one(t, id) { const r = tbl(t).find((x) => String((x as { id: string }).id) === id); return r ? structuredClone(r) : null; },
+    async insert(t, row) { const r = { id: uid(), created_at: now(), ...row } as Tables[typeof t]; tbl(t).push(r); audit(t, "insert", (r as { id: string }).id, null, structuredClone(r)); return structuredClone(r); },
+    async update(t, id, patch) { const r = tbl(t).find((x) => (x as { id: string }).id === id); if (r) { const old = structuredClone(r); Object.assign(r, patch); audit(t, "update", id, old, structuredClone(r)); } },
+    async remove(t, id) { const a = tbl(t); const i = a.findIndex((x) => (x as { id: string }).id === id); if (i >= 0) { audit(t, "delete", id, structuredClone(a[i]), null); a.splice(i, 1); } },
     async next(k) { M.counters[k] = (M.counters[k] ?? 0) + 1; return M.counters[k]; },
   };
 }

@@ -5,7 +5,9 @@ import { staff, allowed } from "@/lib/auth";
 import { getStore } from "@/lib/store";
 import { insights, invoiceViews, orderViews, partyLedger, statement } from "@/lib/domain";
 import { STATES, inr, num, sdate } from "@/lib/money";
-import { wa } from "@/lib/links";
+import { wa, mail } from "@/lib/links";
+import { Mail } from "lucide-react";
+import Persona from "./persona";
 import { Bar, Chip, Denied, Page, Section, Stat } from "@/components/ui";
 
 export default async function PartyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,10 +21,12 @@ export default async function PartyPage({ params }: { params: Promise<{ id: stri
   return (
     <Page title={p.name} sub={[p.city, p.gstin ? `GSTIN ${p.gstin}` : p.state_code ? STATES[p.state_code] : null, p.phone].filter(Boolean).join(" · ")} back={{ href: `/owner/parties?type=${p.type}`, label: p.type === "customer" ? "Customers" : "Suppliers" }}
       actions={<>
-        {p.phone && <a className="btn btn-outline" target="_blank" rel="noreferrer" href={wa(p.phone, `Hello ${p.name}, `)}><MessageCircle size={18} />WhatsApp</a>}
+        {(p.whatsapp || p.phone) && <a className="btn btn-outline" target="_blank" rel="noreferrer" href={wa(p.whatsapp || p.phone || "", `Hello ${p.name}, `)}><MessageCircle size={18} />WhatsApp</a>}
+        {p.email && <a className="btn btn-outline" href={mail(p.email, "", `Dear ${p.name},\n\n`)}><Mail size={18} />Email</a>}
         <Link className="btn btn-outline" href={`/owner/parties/new?id=${p.id}&type=${p.type}`}><Pencil size={16} />Edit</Link>
         {allowed(me, p.type === "customer" ? "sales" : "purchase", "create") && <Link className="btn btn-filled" href={`/owner/orders/new?kind=${p.type === "customer" ? "sale" : "purchase"}&party=${p.id}`}><Plus size={18} />Order</Link>}
       </>}>
+      {p.type === "customer" && allowed(me, "crm", "edit") && <Persona id={p.id} tags={(p.tags ?? []).join(", ")} notes={p.notes ?? ""} whatsapp={p.whatsapp ?? ""} />}
       <div className="statrow">
         <Stat label="Billed in total" value={inr(invs.reduce((t, i) => t + Number(i.total), 0))} hint={`${invs.length} ${p.type === "customer" ? "invoices" : "bills"}`} />
         <Stat label={p.type === "customer" ? "To receive" : "To pay"} value={inr(invs.reduce((t, i) => t + i.balance, 0))} tone={invs.some((i) => i.overdue) ? "err" : "ter"} hint={invs.some((i) => i.overdue) ? "Some are late" : "On time"} />

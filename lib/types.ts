@@ -5,11 +5,12 @@ export type Profile = {
   role: "customer" | "owner" | "staff"; staff_role_id?: string | null; gstin?: string | null; state_code?: string | null;
   address?: string | null; created_at: string;
 };
-export type Company = { id: string; name: string; gstin: string; state_code: string; pincode?: string; address: string; phone: string; email: string; bank: string; invoice_prefix: string; terms: string };
+export type Company = { id: string; name: string; gstin: string; state_code: string; pincode?: string; address: string; phone: string; email: string; bank: string; invoice_prefix: string; terms: string; books_locked_till?: string | null; whatsapp?: string };
 export type Material = { id: string; name: string; category: string; note?: string | null; hsn: string; gst_rate: number; unit: string; opening_qty: number; opening_rate: number; active: boolean };
 export type Party = {
   id: string; name: string; type: "customer" | "supplier"; gstin?: string | null; state_code?: string | null; address?: string | null;
   phone?: string | null; email?: string | null; city?: string | null; pincode?: string | null; profile_id?: string | null; credit_days: number; created_at: string;
+  tags?: string[]; notes?: string | null; whatsapp?: string | null;
 };
 export type RouteCache = { id: string; from_pin: string; to_pin: string; km: number; created_at: string };
 export type Enquiry = { id: string; customer_id: string; status: "new" | "quoted" | "won" | "lost"; note?: string | null; order_id?: string | null; created_at: string };
@@ -32,15 +33,17 @@ export type Invoice = {
   company_snapshot?: Company; party_snapshot?: Party; material_snapshot?: Pick<Material,"name"|"hsn"|"unit">;
   delivery_ids: string[]; delivery_quantities?: Record<string, number>; request_id?: string; place_of_supply: string; voucher_id?: string | null; created_at: string;
 };
-export type VType = "sales" | "purchase" | "receipt" | "payment" | "journal" | "contra";
+export type VType = "sales" | "purchase" | "receipt" | "payment" | "journal" | "contra" | "credit_note" | "debit_note";
 export type Entry = { ledger_id: string; dr: number; cr: number };
 export type Voucher = {
   id: string; number: string; type: VType; date: string; party_id?: string | null; invoice_id?: string | null; narration: string;
   request_id?: string; entries: Entry[]; amount: number; created_by: string; created_at: string; tally_exported: boolean;
 };
-export type LedgerGroup = "Sundry Debtors" | "Sundry Creditors" | "Sales Accounts" | "Purchase Accounts" | "Duties & Taxes" | "Bank Accounts" | "Cash-in-Hand" | "Direct Expenses" | "Indirect Expenses" | "Capital Account" | "Indirect Incomes";
-export type Ledger = { id: string; name: string; grp: LedgerGroup; party_id?: string | null; opening: number };
-export type Offer = { id: string; title: string; body: string; code?: string | null; valid_till?: string | null; created_at: string };
+export type LedgerGroup = string;
+export type Ledger = { id: string; name: string; grp: LedgerGroup; party_id?: string | null; opening: number; gstin?: string | null; alias?: string | null; created_at?: string };
+export type Offer = { id: string; title: string; body: string; code?: string | null; valid_till?: string | null; created_at: string; discount?: string | null; material_id?: string | null; audience?: Record<string, string> | null; channel?: string | null };
+export type BankReco = { id: string; voucher_id: string; ledger_id: string; bank_date: string; statement_ref?: string | null; created_by: string; created_at: string };
+export type AuditLog = { id: string | number; at: string; actor?: string | null; actor_name?: string | null; table_name: string; row_id: string; action: "insert" | "update" | "delete"; old_row?: Record<string, unknown> | null; new_row?: Record<string, unknown> | null };
 export type OfferSend = { id: string; offer_id: string; party_id: string; channel: "whatsapp" | "email" | "sms"; sent_at: string };
 export type Role = { id: string; name: string; perms: Record<string, string[]> };
 export type Invite = { id: string; email: string; name: string; role_id: string; created_at: string };
@@ -49,6 +52,6 @@ export type Activity = { id: string; at: string; by_name: string; what: string }
 export type Tables = {
   profiles: Profile; company: Company; materials: Material; parties: Party; enquiries: Enquiry; enquiry_items: EnquiryItem;
   orders: Order; deliveries: Delivery; contracts: Contract; invoices: Invoice; vouchers: Voucher; ledgers: Ledger;
-  offers: Offer; offer_sends: OfferSend; roles: Role; invites: Invite; activity: Activity; route_cache: RouteCache;
+  offers: Offer; offer_sends: OfferSend; roles: Role; invites: Invite; activity: Activity; route_cache: RouteCache; bank_reco: BankReco; audit_log: AuditLog;
 };
 export type Table = keyof Tables;

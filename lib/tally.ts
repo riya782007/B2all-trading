@@ -2,7 +2,7 @@ import { r2 } from "./money";
 import type { Ledger, Party, Voucher } from "./types";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const TYPE: Record<string, string> = { sales: "Sales", purchase: "Purchase", receipt: "Receipt", payment: "Payment", journal: "Journal", contra: "Contra" };
+const TYPE: Record<string, string> = { sales: "Sales", purchase: "Purchase", receipt: "Receipt", payment: "Payment", journal: "Journal", contra: "Contra", credit_note: "Credit Note", debit_note: "Debit Note" };
 
 /** TallyPrime import file: ledger masters first, then vouchers. Import via Gateway of Tally → Import → Masters/Transactions.
  *  Tally treats debit amounts as negative and credit as positive with ISDEEMEDPOSITIVE flags. */

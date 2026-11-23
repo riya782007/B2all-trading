@@ -19,6 +19,7 @@ export default async function Tally() {
       <div className="card overflow-x-auto"><table className="tbl min-w-[560px]"><thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th className="num">Amount</th><th>Import confirmation</th></tr></thead><tbody>
         {vs.slice(0, 60).map((v) => <tr key={v.id}><td>{sdate(v.date)}</td><td className="font-medium">{v.number}</td><td>{v.type}</td><td className="num">{inr(v.amount)}</td><td>{v.tally_exported ? <Chip tone="green">Confirmed</Chip> : <Chip tone="amber">New</Chip>}</td></tr>)}
       </tbody></table></div>
+    <div className="card mt-6 flex flex-wrap items-center gap-3 p-5"><div className="mr-auto"><div className="font-medium">Coming from Tally?</div><div className="text-sm text-ink2">Import your ledgers and opening balances from a Tally XML export.</div></div><a href="/owner/accounts/import" className="btn btn-tonal">Import from Tally</a></div>
     </Page>
   );
 }

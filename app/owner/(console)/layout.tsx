@@ -9,6 +9,7 @@ import Logo from "@/components/Logo";
 import { hasSupabase } from "@/lib/supabase";
 import Breadcrumb from "@/components/console/Breadcrumb";
 import InstallApp from "@/components/InstallApp";
+import Shortcuts from "@/components/console/Shortcuts";
 import { signOut } from "@/app/actions";
 
 export const metadata: Metadata = { manifest: "/owner-manifest.webmanifest", robots: { index: false, follow: false }, appleWebApp: { capable: true, title: "B2All", statusBarStyle: "default" }, icons: { apple: "/pwa-icon/180" }, title: "Console" };
@@ -27,8 +28,9 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
     ] },
     { label: "Buy", items: a("purchase") ? [{ href: "/owner/orders?kind=purchase", label: "Purchase orders", icon: "ShoppingCart" }, { href: "/owner/invoices?kind=purchase", label: "Supplier bills", icon: "FileInput" }, { href: "/owner/matching", label: "Bill matching", icon: "GitCompareArrows" }] : [] },
     { label: "Stock", items: a("inventory") ? [{ href: "/owner/stock", label: "Stock", icon: "Boxes" }, { href: "/owner/deliveries", label: "Dispatch and receipts", icon: "Truck" }, { href: "/owner/eway", label: "E-way bills", icon: "Route" }] : [] },
-    { label: "Money", items: a("accounts") ? [{ href: "/owner/accounts", label: "Day book", icon: "BookOpen" }, { href: "/owner/accounts/outstanding", label: "Outstanding", icon: "Clock" }, { href: "/owner/accounts/ledgers", label: "Ledgers", icon: "Library" }, { href: "/owner/accounts/reports", label: "Trial balance and GST", icon: "Scale" }, { href: "/owner/accounts/tally", label: "Tally", icon: "FileDown" }] : [] },
-    { label: "People", items: [...(a("crm") ? [{ href: "/owner/parties?type=customer", label: "Customers", icon: "Users" as const }, { href: "/owner/offers", label: "Offers", icon: "Megaphone" as const }] : []), ...(a("purchase") ? [{ href: "/owner/parties?type=supplier", label: "Suppliers", icon: "Factory" as const }] : [])] },
+    { label: "Accounts", items: a("accounts") ? [{ href: "/owner/accounts", label: "Day book", icon: "BookOpen" }, ...(a("accounts", "create") ? [{ href: "/owner/accounts/voucher?type=payment", label: "Voucher entry", icon: "Keyboard" as const }] : []), { href: "/owner/accounts/ledgers", label: "Chart of accounts", icon: "Library" }, { href: "/owner/accounts/outstanding", label: "Outstanding", icon: "Clock" }, { href: "/owner/accounts/bank", label: "Bank reconciliation", icon: "Landmark" }] : [] },
+    { label: "Reports", items: a("accounts") ? [{ href: "/owner/accounts/reports", label: "Trial balance", icon: "Scale" }, { href: "/owner/accounts/pnl", label: "Profit & Loss", icon: "TrendingUp" }, { href: "/owner/accounts/balance-sheet", label: "Balance Sheet", icon: "Landmark" }, { href: "/owner/accounts/gst", label: "GST returns", icon: "ReceiptIndianRupee" }, { href: "/owner/accounts/edit-log", label: "Edit log", icon: "ShieldCheck" }, { href: "/owner/accounts/tally", label: "Tally sync", icon: "FileDown" }] : [] },
+    { label: "People", items: [...(a("crm") ? [{ href: "/owner/parties?type=customer", label: "Customers", icon: "Users" as const }, { href: "/owner/offers", label: "Offers and targeting", icon: "Megaphone" as const }] : []), ...(a("purchase") ? [{ href: "/owner/parties?type=supplier", label: "Suppliers", icon: "Factory" as const }] : [])] },
     { label: "Admin", items: a("admin") ? [{ href: "/owner/team", label: "Team and roles", icon: "ShieldCheck" }, { href: "/owner/settings", label: "Settings", icon: "Settings" }, { href: "/owner/activity", label: "Activity", icon: "History" }] : [] },
   ] as NavGroup[]).filter((g) => g.items.length);
   const create = [
@@ -37,9 +39,10 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
     ...(a("inventory", "create") ? [{ href: "/owner/deliveries/new", label: "Dispatch or receipt", icon: "Truck" as const }] : []),
     ...(a("sales", "create") ? [{ href: "/owner/invoices/new?kind=sale", label: "Sales invoice", icon: "ReceiptIndianRupee" as const }] : []),
     ...(a("purchase", "create") ? [{ href: "/owner/invoices/new?kind=purchase", label: "Supplier bill", icon: "FileInput" as const }] : []),
-    ...(a("accounts", "create") ? [{ href: "/owner/accounts/new?type=receipt", label: "Payment received", icon: "ArrowDownLeft" as const }, { href: "/owner/accounts/new?type=payment", label: "Payment made", icon: "ArrowUpRight" as const }, { href: "/owner/accounts/new?type=expense", label: "Expense", icon: "Wallet" as const }] : []),
+    ...(a("accounts", "create") ? [{ href: "/owner/accounts/new?type=receipt", label: "Payment received", icon: "ArrowDownLeft" as const }, { href: "/owner/accounts/new?type=payment", label: "Payment made", icon: "ArrowUpRight" as const }, { href: "/owner/accounts/new?type=expense", label: "Expense", icon: "Wallet" as const }, { href: "/owner/accounts/voucher?type=credit_note", label: "Credit / debit note", icon: "FileInput" as const }, { href: "/owner/accounts/ledgers?new=1", label: "Ledger (Alt+C)", icon: "Library" as const }] : []),
     ...(a("crm", "create") ? [{ href: "/owner/parties/new?type=customer", label: "Customer", icon: "UserPlus" as const }] : []),
   ];
+  const pages = [...groups.flatMap((g) => g.items.map((i) => ({ label: i.label, hint: g.label || "Home", href: i.href }))), ...(a("accounts", "edit") ? [{ label: "Import from Tally", hint: "Accounts", href: "/owner/accounts/import" }] : []), ...(a("accounts") ? [{ label: "Stock summary", hint: "Reports", href: "/owner/stock" }, { label: "Cash book", hint: "Reports", href: "/owner/accounts/ledgers?q=cash" }] : [])];
   const initials = me.profile.name.split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div className="console-shell min-h-screen lg:flex"><a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:z-50 focus:bg-s1 focus:p-4">Skip to workspace</a>
@@ -57,6 +60,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
             <input name="q" placeholder="Search your workspace…" aria-label="Search" className="h-11 w-full rounded-lg border border-line bg-s1 pl-11 pr-4 text-[.8rem] outline-none placeholder:text-ink2 focus:border-ink focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--act)_55%,transparent)]" />
           </form>
           <div className="flex items-center gap-2">
+            <Shortcuts pages={pages} accounts={a("accounts", "create")} />
             <CreateMenu items={create} />
             <ThemeToggle />
             <div className="group relative">

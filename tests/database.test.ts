@@ -68,3 +68,39 @@ test('PostgreSQL migration: partial bills, retry, rollback, authorization and im
   await assert.rejects(()=>post({...b,request_id:crypto.randomUUID()}),/Staff sign-in/);
  } finally { await db.close(); }
 });
+
+test('PostgreSQL 006: debit notes, books lock, permanent edit log, public contact', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create schema auth; create schema extensions; create role anon; create role authenticated;
+     create table auth.users(id uuid primary key);
+     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+     create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('test.jwt',true),''),'{}')::jsonb$$;`);
+    for (const f of ['schema.sql', '002_erp.sql', '003_security.sql', '004_fixes.sql', 'migrations/20261102142325_bill_matching.sql', '006_tally_offers.sql']) {
+      await db.exec((await readFile(`supabase/${f}`, 'utf8')).replace('create extension if not exists pgcrypto;', ''));
+    }
+    // running it twice must be safe
+    await db.exec((await readFile('supabase/006_tally_offers.sql', 'utf8')));
+    await db.exec(`grant usage on schema public,auth to authenticated,anon; grant select,insert,update,delete on all tables in schema public to authenticated,anon;
+     revoke insert,update,delete on public.invoices from authenticated,anon; revoke insert, update, delete, truncate on public.audit_log from anon, authenticated;
+     insert into auth.users values('${owner}'); insert into public.profiles(id,phone,name,role) values('${owner}','','Amit','owner');
+     insert into company(id,name,state_code,whatsapp) values('main','B2All','22','9810000000') on conflict (id) do update set whatsapp='9810000000';
+     select set_config('test.uid','${owner}',false);`);
+    const party = (await db.query<{ id: string }>(`insert into parties(name,type,state_code) values('Supplier','supplier','22') returning id`)).rows[0].id;
+    const ledger = (await db.query<{ id: string }>(`insert into ledgers(name,grp,party_id) values('Supplier','Sundry Creditors','${party}') returning id`)).rows[0].id;
+    const purchase = (await db.query<{ id: string }>("insert into ledgers(name,grp) values('Purchase','Purchase Accounts') on conflict (name) do update set grp=excluded.grp returning id")).rows[0].id;
+    await db.exec('set role authenticated');
+    const pay = async (p: unknown) => (await db.query<{ v: { id: string; number: string; type: string } }>('select post_balanced_voucher($1::jsonb) v', [JSON.stringify(p)])).rows[0].v;
+    const note = { request_id: crypto.randomUUID(), type: 'debit_note', date: '2026-11-05', party_id: party, narration: 'Quality', entries: [{ ledger_id: ledger, dr: 1000, cr: 0 }, { ledger_id: purchase, dr: 0, cr: 1000 }] };
+    const v = await pay(note); assert.equal(v.type, 'debit_note'); assert.match(v.number, /^DBN\//);
+    const log = await db.query<{ n: number }>(`select count(*)::int n from audit_log where table_name='vouchers' and row_id='${v.id}' and action='insert'`); assert.equal(log.rows[0].n, 1);
+    await assert.rejects(() => db.exec('delete from audit_log'), /permission denied|permanent/);
+    await db.exec("update company set books_locked_till='2026-11-30' where id='main'");
+    await assert.rejects(() => pay({ ...note, request_id: crypto.randomUUID() }), /locked/);
+    await db.exec('reset role');
+    await assert.rejects(() => db.exec('delete from audit_log'), /permanent/);
+    await assert.rejects(() => db.exec('update audit_log set actor_name=null'), /permanent/);
+    await db.exec('set role anon');
+    assert.equal((await db.query<{ c: { whatsapp: string } }>('select public_contact() c')).rows[0].c.whatsapp, '9810000000');
+  } finally { await db.close(); }
+});

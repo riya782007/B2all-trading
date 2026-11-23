@@ -311,7 +311,7 @@ export async function saveCompany(_: FormState, fd: FormData): Promise<FormState
   const me = await mustStaff("admin", "edit"); const s = await getStore();
   const gstin = str(fd, "gstin").toUpperCase();
   if (gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z\d]Z[A-Z\d]$/.test(gstin)) return { error: "That GSTIN does not look right." };
-  const patch = { name: str(fd, "name"), gstin, state_code: stateFromGstin(gstin) || str(fd, "state_code") || "22", address: str(fd, "address"), pincode: str(fd, "pincode"), phone: str(fd, "phone"), email: str(fd, "email"), bank: str(fd, "bank"), invoice_prefix: str(fd, "invoice_prefix") || "B2A", terms: str(fd, "terms") };
+  const patch = { name: str(fd, "name"), gstin, state_code: stateFromGstin(gstin) || str(fd, "state_code") || "22", address: str(fd, "address"), pincode: str(fd, "pincode"), phone: str(fd, "phone"), email: str(fd, "email"), bank: str(fd, "bank"), invoice_prefix: str(fd, "invoice_prefix") || "B2A", terms: str(fd, "terms"), ...(str(fd, "whatsapp") ? { whatsapp: str(fd, "whatsapp") } : {}) };
   if (await s.one("company", "main")) await s.update("company", "main", patch); else await s.insert("company", { id: "main", ...patch });
   await D.log(s, me.profile.name, "Updated company settings");
   revalidatePath("/", "layout");

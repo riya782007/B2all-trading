@@ -130,10 +130,13 @@ export async function addDelivery(s: Store, by: string, i: DeliveryInput) {
 
 /* ───────────────────────── vouchers (double entry) ───────────────────────── */
 
-const VPREFIX: Record<VType, string> = { sales: "SAL", purchase: "PUR", receipt: "RCT", payment: "PMT", journal: "JRN", contra: "CNT" };
+const VPREFIX: Record<VType, string> = { sales: "SAL", purchase: "PUR", receipt: "RCT", payment: "PMT", journal: "JRN", contra: "CNT", credit_note: "CRN", debit_note: "DBN" };
+export const SETTLES = ["receipt", "payment", "credit_note", "debit_note"];
 export type VoucherInput = { type: VType; date: string; party_id?: string | null; invoice_id?: string | null; narration: string; entries: Entry[]; number?: string; request_id?: string };
 export async function postVoucher(s: Store, by: string, v: VoucherInput) {
   if (!validDate(v.date)) throw new Error("Enter a valid voucher date.");
+  const lock = (await company(s)).books_locked_till;
+  if (lock && v.date <= lock) throw new Error(`Books are locked up to ${lock}. Ask the owner to unlock that period first.`);
   const ledgers = await s.all("ledgers");
   if (v.entries.some((e) => !Number.isFinite(e.dr) || !Number.isFinite(e.cr) || e.dr < 0 || e.cr < 0 || (e.dr > 0 && e.cr > 0) || !ledgers.some((l) => l.id === e.ledger_id))) throw new Error("Each entry needs an existing ledger and a positive debit or credit, never both.");
   const entries = v.entries.filter((e) => e.dr || e.cr).map((e) => ({ ledger_id: e.ledger_id, dr: r2(e.dr), cr: r2(e.cr) }));
@@ -153,7 +156,7 @@ export async function recordMoney(s: Store, by: string, d: { direction: "in" | "
   if (d.invoice_id) {
     const inv = await s.one("invoices", d.invoice_id);
     if (!inv || inv.party_id !== p.id || inv.kind !== (d.direction === "in" ? "sale" : "purchase")) throw new Error("This bill does not belong to the selected party or payment direction.");
-    const paid = (await s.all("vouchers",{invoice_id:inv.id})).filter(v=>v.type === "receipt" || v.type === "payment").reduce((n,v)=>n+v.amount,0);
+    const paid = (await s.all("vouchers",{invoice_id:inv.id})).filter(v=>SETTLES.includes(v.type)).reduce((n,v)=>n+v.amount,0);
     if (r2(d.amount) > r2(inv.total-paid)) throw new Error("This exceeds the bill balance. Record any advance separately on account.");
   }
   const pl = await partyLedger(s, p), cash = await ledger(s, d.mode);
@@ -209,7 +212,7 @@ export async function invoiceViews(s: Store, kind?: Kind): Promise<InvoiceView[]
   const [invs, parties, mats, orders, vchs] = await Promise.all([s.all("invoices"), s.all("parties"), s.all("materials"), s.all("orders"), s.all("vouchers")]);
   const t = Date.now();
   return invs.filter((i) => !kind || i.kind === kind).map((i) => {
-    const paid = r2(vchs.filter((v) => v.invoice_id === i.id && (v.type === "receipt" || v.type === "payment")).reduce((a, v) => a + Number(v.amount), 0));
+    const paid = r2(vchs.filter((v) => v.invoice_id === i.id && SETTLES.includes(v.type)).reduce((a, v) => a + Number(v.amount), 0));
     const balance = r2(Number(i.total) - paid);
     return { ...i, party: parties.find((p) => p.id === i.party_id)!, material: mats.find((m) => m.id === i.material_id)!, order: orders.find((o) => o.id === i.order_id)!, paid, balance, status: balance <= 0 ? "paid" : paid > 0 ? "part" : "unpaid", overdue: balance > 0 ? Math.max(0, Math.floor((t - +new Date(i.due_date)) / 864e5)) : 0 } as InvoiceView;
   }).sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at));

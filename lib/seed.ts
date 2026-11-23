@@ -25,8 +25,9 @@ export const DEFAULT_MATERIALS: Omit<Material, "id">[] = [
 
 export async function seed(s: Store) {
   const d = (n: number) => addDays(today(), n);
-  await s.insert("company", { id: "main", name: "B2 All Commo Trade Pvt. Ltd.", gstin: "22AAAAA0000A1Z5", state_code: "22", address: "Raigarh, Chhattisgarh 496001", pincode: "496001", phone: "+91 90000 00000", email: "accounts@example.com", bank: "Sample Bank · A/c 000000000000 · IFSC SAMP0000000", invoice_prefix: "B2A", terms: "Disputes subject to Raigarh jurisdiction." });
-  for (const [name, grp] of STD_LEDGERS) await s.insert("ledgers", { name, grp, opening: name === "Bank" ? 2500000 : name === "Capital" ? -2500000 : 0 });
+  await s.insert("company", { id: "main", name: "B2 All Commo Trade Pvt. Ltd.", gstin: "22AAAAA0000A1Z5", state_code: "22", address: "Raigarh, Chhattisgarh 496001", pincode: "496001", whatsapp: "+91 90000 00000", phone: "+91 90000 00000", email: "accounts@example.com", bank: "Sample Bank · A/c 000000000000 · IFSC SAMP0000000", invoice_prefix: "B2A", terms: "Disputes subject to Raigarh jurisdiction." });
+  const openingStock = DEFAULT_MATERIALS.reduce((t, m) => t + m.opening_qty * m.opening_rate, 0);
+  for (const [name, grp] of STD_LEDGERS) await s.insert("ledgers", { name, grp, opening: name === "Bank" ? 2500000 : name === "Capital" ? -(2500000 + openingStock) : 0 });
   const mats = []; for (const m of DEFAULT_MATERIALS) mats.push(await s.insert("materials", m));
   const roles = []; for (const r of DEFAULT_ROLES) roles.push(await s.insert("roles", r));
   const P = (id: string, name: string, role: "owner" | "staff" | "customer", extra = {}) => s.insert("profiles", { id, name, role, phone: "+91900000" + id.slice(-4).replace(/\D/g, "0").padStart(4, "0"), city: "Raigarh", ...extra });

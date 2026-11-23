@@ -8,6 +8,7 @@ import { hasSupabase } from "@/lib/supabase";
 import { Denied, Page, Section } from "@/components/ui";
 import { saveMaterial } from "@/app/actions";
 import CompanyForm from "./company-form";
+import LockBooks from "./lock-books";
 
 export default async function Settings() {
   const me = await staff("admin"); if (!me) return <Denied />;
@@ -17,6 +18,7 @@ export default async function Settings() {
   return (
     <Page title="Settings" sub="Company details print on every invoice and contract.">
       <div className="card p-6"><CompanyForm co={co} edit={edit} /></div>
+      {me.profile.role === "owner" && <Section title="Lock the books"><LockBooks date={co.books_locked_till ?? ""} /></Section>}
       <Section title="Materials, HSN and GST">
         <p className="mb-3 text-sm text-ink2">Confirm each HSN, GST rate and applicable cess with your accountant. Set opening stock only at the agreed cutover date.</p>
         <div className="space-y-2">{[...mats, null].map((m, i) => (

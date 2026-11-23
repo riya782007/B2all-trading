@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { House, Inbox, FileText, FileSignature, ReceiptIndianRupee, ShoppingCart, FileInput, GitCompareArrows, Boxes, Truck, Route, BookOpen, Clock, Library, Scale, FileDown, Users, Megaphone, Factory, ShieldCheck, Settings, History, ArrowDownLeft, ArrowUpRight, Wallet, UserPlus, Menu, X, Plus } from "lucide-react";
-const ICONS = { House, Inbox, FileText, FileSignature, ReceiptIndianRupee, ShoppingCart, FileInput, GitCompareArrows, Boxes, Truck, Route, BookOpen, Clock, Library, Scale, FileDown, Users, Megaphone, Factory, ShieldCheck, Settings, History, ArrowDownLeft, ArrowUpRight, Wallet, UserPlus };
+import { House, Inbox, FileText, FileSignature, ReceiptIndianRupee, ShoppingCart, FileInput, GitCompareArrows, Boxes, Truck, Route, BookOpen, Clock, Library, Scale, FileDown, Users, Megaphone, Factory, ShieldCheck, Settings, History, ArrowDownLeft, ArrowUpRight, Wallet, UserPlus, Menu, X, Plus, Keyboard, Landmark, TrendingUp } from "lucide-react";
+const ICONS = { House, Inbox, FileText, FileSignature, ReceiptIndianRupee, ShoppingCart, FileInput, GitCompareArrows, Boxes, Truck, Route, BookOpen, Clock, Library, Scale, FileDown, Users, Megaphone, Factory, ShieldCheck, Settings, History, ArrowDownLeft, ArrowUpRight, Wallet, UserPlus, Keyboard, Landmark, TrendingUp };
 import Logo from "@/components/Logo";
 
 export type NavGroup = { label: string; items: { href: string; label: string; icon: keyof typeof ICONS; badge?: number }[] };
