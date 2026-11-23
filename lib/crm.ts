@@ -9,7 +9,7 @@ export type Persona = {
   avgGap: number | null; nextDue: string | null; dueInDays: number | null; topMaterial: string; topMaterialId: string; materials: string[]; categories: string[];
   outstanding: number; overdue: number; offersSent: number; lastOfferAt: string | null; enquiries: number; segment: "New" | "Active" | "Due to reorder" | "Slipping" | "Dormant" | "Never ordered";
 };
-export type Filter = { q?: string; material?: string; category?: string; city?: string; state?: string; tag?: string; activity?: string; minSpend?: string; dues?: string; reach?: string };
+export type Filter = { q?: string; material?: string; category?: string; city?: string; state?: string; tag?: string; activity?: string; minSpend?: string; dues?: string; reach?: string; source?: string };
 
 export async function personas(s: Store): Promise<Persona[]> {
   const [parties, ov, inv, mats, sends, enq, profiles] = await Promise.all([s.all("parties", { type: "customer" }), orderViews(s, "sale"), invoiceViews(s, "sale"), s.all("materials"), s.all("offer_sends"), s.all("enquiries"), s.all("profiles")]);
@@ -49,5 +49,6 @@ export function applyFilter(rows: Persona[], f: Filter) {
     (!f.activity || f.activity === "all" || p.segment === f.activity) &&
     (!f.minSpend || p.spendAll >= Number(f.minSpend)) &&
     (!f.dues || (f.dues === "clear" ? p.outstanding <= 0 : f.dues === "owes" ? p.outstanding > 0 : p.overdue > 0)) &&
-    (!f.reach || (f.reach === "whatsapp" ? !!p.whatsapp : f.reach === "email" ? !!p.email : true)));
+    (!f.reach || (f.reach === "whatsapp" ? !!p.whatsapp : f.reach === "email" ? !!p.email : true)) &&
+    (!f.source || (f.source === "website" ? p.registered : !p.registered)));
 }

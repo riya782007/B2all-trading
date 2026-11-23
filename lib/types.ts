@@ -13,7 +13,7 @@ export type Party = {
   tags?: string[]; notes?: string | null; whatsapp?: string | null;
 };
 export type RouteCache = { id: string; from_pin: string; to_pin: string; km: number; created_at: string };
-export type Enquiry = { id: string; customer_id: string; status: "new" | "quoted" | "won" | "lost"; note?: string | null; order_id?: string | null; created_at: string };
+export type Enquiry = { id: string; customer_id: string; status: "new" | "quoted" | "won" | "lost"; note?: string | null; order_id?: string | null; offer_id?: string | null; created_at: string };
 export type EnquiryItem = { id: string; enquiry_id: string; material_id: string; qty: number; unit: string };
 export type Order = {
   id: string; number: string; kind: Kind; party_id: string; material_id: string; qty: number; rate: number; date: string;

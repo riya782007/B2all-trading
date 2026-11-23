@@ -157,29 +157,29 @@ export async function tallyImportAction(_: FormState, fd: FormData): Promise<For
 /* ───────────── Customer targeting and offer campaigns ───────────── */
 export async function createCampaign(_: FormState, fd: FormData): Promise<FormState> {
   const me = await mustStaff("crm", "create"); const s = await getStore();
-  const title = str(fd, "title"), body = str(fd, "body"), channel = (["whatsapp", "email", "sms"].includes(str(fd, "channel")) ? str(fd, "channel") : "whatsapp") as "whatsapp" | "email" | "sms";
+  const title = str(fd, "title"), body = str(fd, "body"), channel = (["whatsapp", "email", "sms", "website"].includes(str(fd, "channel")) ? str(fd, "channel") : "whatsapp") as "whatsapp" | "email" | "sms" | "website";
   const ids = [...new Set(fd.getAll("to").map(String))];
   if (!title || !body) return { error: "Write a title and a message." };
-  if (!ids.length) return { error: "Pick at least one customer." };
+  if (!ids.length && channel !== "website") return { error: "Pick at least one customer." };
   if (ids.length > 2000) return { error: "Send to at most 2,000 customers at a time." };
   const valid = str(fd, "valid_till"); if (valid && !validDate(valid)) return { error: "Enter a valid date for 'valid till'." };
   const parties = await s.all("parties", { type: "customer" });
-  const to = parties.filter((p) => ids.includes(p.id));
+  const to = channel === "website" ? [] : parties.filter((p) => ids.includes(p.id));
   let audience: Record<string, string> | null = null; try { audience = JSON.parse(str(fd, "audience") || "null"); } catch { audience = null; }
   const extra = { ...(str(fd, "discount") ? { discount: str(fd, "discount") } : {}), ...(str(fd, "material_id") ? { material_id: str(fd, "material_id") } : {}), ...(audience ? { audience } : {}), channel };
   let o;
   try { o = await s.insert("offers", { title, body, code: str(fd, "code") || null, valid_till: valid || null, ...extra }); }
-  catch { o = await s.insert("offers", { title, body, code: str(fd, "code") || null, valid_till: valid || null }); } // before the 006 update is installed
+  catch (e) { if (channel === "website") return { error: "Install database update 006 to publish offers on the website." }; void e; o = await s.insert("offers", { title, body, code: str(fd, "code") || null, valid_till: valid || null }); } // before the 006 update is installed
   const mats = await s.all("materials"); const mat = mats.find((m) => m.id === str(fd, "material_id"));
   let mailed = 0;
   for (const p of to) {
-    await s.insert("offer_sends", { offer_id: o.id, party_id: p.id, channel, sent_at: new Date().toISOString() });
+    await s.insert("offer_sends", { offer_id: o.id, party_id: p.id, channel: channel as "whatsapp" | "email" | "sms", sent_at: new Date().toISOString() });
     if (channel === "email" && hasGmail && p.email) {
       const v = { name: p.name, company: p.name, city: p.city ?? "", material: mat?.name ?? "" };
       if (await sendMail(p.email, personalise(title, v), `<p>${html(personalise(body, v)).replace(/\n/g, "<br>")}</p>${o.code ? `<p><b>Code: ${html(o.code)}</b></p>` : ""}${o.valid_till ? `<p>Valid till ${html(o.valid_till)}</p>` : ""}`)) mailed++;
     }
   }
-  await D.log(s, me.profile.name, `Prepared offer "${title}" for ${to.length} customers by ${channel}${mailed ? ` (${mailed} emailed)` : ""}`);
+  await D.log(s, me.profile.name, channel === "website" ? `Published offer "${title}" on the website` : `Prepared offer "${title}" for ${to.length} customers by ${channel}${mailed ? ` (${mailed} emailed)` : ""}`);
   redirect(done(`/owner/offers/${o.id}?new=1&mailed=${mailed}`));
 }
 export async function savePersonaAction(_: FormState, fd: FormData): Promise<FormState> {

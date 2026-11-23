@@ -5,6 +5,7 @@ import { wa } from "@/lib/links";
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const c = await publicContact(); const num = c.whatsapp || "";
   return (<div className="customer-site">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "Organization", name: "B2 All Commo Trade Pvt. Ltd.", url: "https://b2alltrading.vercel.app", foundingDate: "2017", address: { "@type": "PostalAddress", addressLocality: "Raigarh", addressRegion: "Chhattisgarh", postalCode: "496001", addressCountry: "IN" }, ...(c.phone ? { telephone: c.phone } : {}), ...(c.email ? { email: c.email } : {}), areaServed: ["Chhattisgarh", "Maharashtra", "Andhra Pradesh", "Bihar", "Jharkhand"], knowsAbout: ["Coal", "Ferro alloys", "Iron ore", "Scrap", "Dolomite", "Limestone", "Quartz"] }).replace(/</g, "\\u003c") }} />
     <Header />
     <main>{children}</main>
     <footer className="noprint mt-4 border-t border-line">

@@ -6,7 +6,10 @@ import { readBasket, writeBasket, subscribeBasket, basketSnapshot } from "@/comp
 import { submitEnquiry, type FormState } from "@/app/actions";
 
 type M = { id: string; name: string; category: string; unit: string };
-export default function BasketView({ materials }: { materials: M[] }) {
+type O = { id: string; title: string; code: string | null; discount: string | null };
+export default function BasketView({ materials, offers }: { materials: M[]; offers: O[] }) {
+  const [offer, setOffer] = useState<O | null>(null);
+  const [code, setCode] = useState(""); const [codeErr, setCodeErr] = useState("");
   const rawBasket = useSyncExternalStore(subscribeBasket, basketSnapshot, () => "{}");
   const b: Record<string,number> = JSON.parse(rawBasket);
   const [note, setNote] = useState("");
@@ -14,9 +17,11 @@ export default function BasketView({ materials }: { materials: M[] }) {
   const [pending, start] = useTransition();
   useEffect(() => {
     const cur = readBasket(); const p = new URLSearchParams(location.search);
-    const add = p.get("add"); if (add) { cur[add] = Number(p.get("qty")) || cur[add] || 100; writeBasket(cur); history.replaceState(null, "", "/basket"); }
+    const add = p.get("add"); if (add) { cur[add] = Number(p.get("qty")) || cur[add] || 100; writeBasket(cur); }
+    const o = offers.find((x) => x.id === p.get("offer")); if (o) setOffer(o); // eslint-disable-line react-hooks/set-state-in-effect
+    if (add || o) history.replaceState(null, "", "/basket");
     writeBasket(cur);
-  }, []);
+  }, [offers]);
   const ids = Object.keys(b).filter((id) => materials.some((m) => m.id === id));
   const set = (id: string, q: number) => { const n = { ...b, [id]: Math.max(0, Math.round(q)) }; writeBasket(n); };
   const del = (id: string) => { const n = { ...b }; delete n[id]; writeBasket(n); };
@@ -38,9 +43,11 @@ export default function BasketView({ materials }: { materials: M[] }) {
             <span className="w-8 text-sm text-ink2">{m.unit}</span>
             <button onClick={() => del(id)} className="grid size-9 place-items-center rounded-full text-ink2 hover:bg-s3" aria-label={`Remove ${m.name}`}><Trash2 size={17} /></button>
           </div>); })}
+        <div className="card-tonal p-4">{offer ? <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">Offer applied:</span><span>{offer.title}</span>{offer.discount && <span className="chip chip-green">{offer.discount}</span>}{offer.code && <span className="font-mono text-xs">{offer.code}</span>}<button className="btn btn-text btn-sm ml-auto" onClick={() => setOffer(null)}>Remove</button></div>
+          : <div className="flex flex-wrap items-end gap-2"><label className="field flex-1"><span>Have an offer code?</span><input value={code} onChange={(e) => { setCode(e.target.value.toUpperCase()); setCodeErr(""); }} className="input font-mono" placeholder="e.g. FRESH" /></label><button className="btn btn-outline" onClick={() => { const o = offers.find((x) => x.code && x.code.toUpperCase() === code.trim()); if (o) setOffer(o); else setCodeErr("That code is not active for your account."); }}>Apply</button>{codeErr && <p className="w-full text-sm text-err">{codeErr}</p>}</div>}</div>
         <label className="field pt-2"><span>Anything we should know?</span><textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Grade, delivery place, timing…" className="input" /></label>
         {res?.error && <p role="alert" className="text-sm font-medium text-err">{res.error}</p>}
-        <button className="btn btn-filled btn-lg w-full" disabled={pending || ids.some((i) => !b[i])} onClick={() => start(async () => { const r = await submitEnquiry(JSON.stringify(ids.map((id) => ({ material_id: id, qty: b[id] }))), note); if (r.ok) writeBasket({}); setRes(r); })}>{pending ? "Sending…" : "Send enquiry"}</button>
+        <button className="btn btn-filled btn-lg w-full" disabled={pending || ids.some((i) => !b[i])} onClick={() => start(async () => { const r = await submitEnquiry(JSON.stringify(ids.map((id) => ({ material_id: id, qty: b[id] }))), note, offer?.id); if (r.ok) writeBasket({}); setRes(r); })}>{pending ? "Sending…" : "Send enquiry"}</button>
       </div>)}
   </>);
 }

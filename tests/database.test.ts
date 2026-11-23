@@ -76,7 +76,7 @@ test('PostgreSQL 006: debit notes, books lock, permanent edit log, public contac
      create table auth.users(id uuid primary key);
      create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
      create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('test.jwt',true),''),'{}')::jsonb$$;`);
-    for (const f of ['schema.sql', '002_erp.sql', '003_security.sql', '004_fixes.sql', 'migrations/20261102142325_bill_matching.sql', '006_tally_offers.sql']) {
+    for (const f of ['schema.sql', '002_erp.sql', '003_security.sql', '004_fixes.sql', 'migrations/20261102142325_bill_matching.sql', '006_tally_offers.sql', '007_offers_portal.sql']) {
       await db.exec((await readFile(`supabase/${f}`, 'utf8')).replace('create extension if not exists pgcrypto;', ''));
     }
     // running it twice must be safe
@@ -102,5 +102,8 @@ test('PostgreSQL 006: debit notes, books lock, permanent edit log, public contac
     await assert.rejects(() => db.exec('update audit_log set actor_name=null'), /permanent/);
     await db.exec('set role anon');
     assert.equal((await db.query<{ c: { whatsapp: string } }>('select public_contact() c')).rows[0].c.whatsapp, '9810000000');
+    await db.exec("reset role; insert into offers(title,body,channel,code) values('Fresh coal','Ready now','website','FRESH'),('Private','For one','whatsapp',null); set role anon");
+    const pub = (await db.query<{ o: { title: string }[] }>('select public_offers() o')).rows[0].o;
+    assert.deepEqual(pub.map((x) => x.title), ['Fresh coal']);
   } finally { await db.close(); }
 });

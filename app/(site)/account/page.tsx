@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FileSignature, Sparkles, TrendingUp, Repeat, Package, Truck, FileText } from "lucide-react";
 import { getMe } from "@/lib/auth";
+import OfferCards from "@/components/site/OfferCards";
+import { offersFor } from "@/lib/offers";
 import { getStore } from "@/lib/store";
 import { insights } from "@/lib/domain";
 import { fdate, inr, num, sdate } from "@/lib/money";
@@ -20,6 +22,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const party = (await s.all("parties", { profile_id: me.profile.id }))[0];
   const ins = party ? await insights(s, party.id) : null;
   const [enqs, items, mats, contracts] = await Promise.all([s.all("enquiries", { customer_id: me.profile.id }), s.all("enquiry_items"), s.all("materials"), party ? s.all("contracts", { party_id: party.id }) : Promise.resolve([])]);
+  const offers = await offersFor(party?.id ?? null, party?.name ?? me.profile.name, party?.city ?? me.profile.city ?? "");
   const toSign = contracts.filter((c) => c.status === "sent");
   const openEnq = enqs.filter((e) => e.status === "new" || e.status === "quoted").sort((a, b) => b.created_at.localeCompare(a.created_at));
   const first = me.profile.name.split(" ")[0];
@@ -40,6 +43,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
       )}
 
       {tab === "overview" && (<div className="mt-6 space-y-6">
+        {offers.length > 0 && <section><h2 className="mb-3 text-lg font-medium">Offers for you</h2><OfferCards offers={offers} /></section>}
         {!ins || !ins.orders.length ? <Empty icon={Sparkles} title="Your supply desk is ready">Once you place orders, you will see what you buy most, how often, and when you are likely to need more.</Empty> : (<>
           <div className="statrow">
             <Card icon={TrendingUp} label="Bought this year" value={inr(ins.spendFY)} hint={`${ins.orders.length} orders`} />

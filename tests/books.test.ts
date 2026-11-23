@@ -89,3 +89,15 @@ test("Tally XML masters import: debit openings are negative in Tally, custom gro
   assert.equal(res.created, 2); assert.deepEqual(res.skipped, ["Bank"]);
   assert.equal((await s.all("parties")).find((p) => p.name === "Mehta & Sons")?.type, "customer");
 });
+
+test("contract from an offer enquiry carries the offer, quality, arbitration and force majeure clauses", async () => {
+  const { s } = await books();
+  const { draftContract } = await import("../lib/domain");
+  const p = await createParty(s, "t", { name: "Jain Steel", type: "customer", state_code: "22" });
+  const m = await s.insert("materials", { name: "Thermal coal", category: "Coal", hsn: "2701", gst_rate: 5, unit: "MT", opening_qty: 0, opening_rate: 0, active: true });
+  const offer = await s.insert("offers", { title: "Fresh stock", body: "x", code: "WEEK150", discount: "₹150/MT off", channel: "website" });
+  const e = await s.insert("enquiries", { customer_id: "c1", status: "won", offer_id: offer.id });
+  const o = await s.insert("orders", { number: "SO/9", kind: "sale", party_id: p.id, material_id: m.id, qty: 100, rate: 6000, date: "2026-11-20", status: "open", enquiry_id: e.id });
+  const c = await draftContract(s, "t", o.id);
+  for (const t of ["Offer applied: Fresh stock (₹150/MT off), code WEEK150", "pro-rata with GCV", "Arbitration and Conciliation Act, 1996", "Force majeure", "weighbridge"]) assert.ok(c.body.includes(t), t);
+});

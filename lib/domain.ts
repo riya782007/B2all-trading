@@ -279,6 +279,8 @@ export async function draftContract(s: Store, by: string, orderId: string) {
   if (existing) return existing;
   const co = await company(s);
   const seller = o.kind === "sale" ? co.name : o.party.name, buyer = o.kind === "sale" ? o.party.name : co.name;
+  const enq = o.enquiry_id ? await s.one("enquiries", o.enquiry_id) : null;
+  const offer = enq?.offer_id ? await s.one("offers", enq.offer_id) : null;
   const body = [
     `SALE AND PURCHASE CONTRACT`, ``,
     `Contract for order ${o.number} dated ${o.date}.`, ``,
@@ -287,9 +289,14 @@ export async function draftContract(s: Store, by: string, orderId: string) {
     `2. Quantity: ${o.qty} ${o.material.unit}. Deliveries may be made in parts against this order.`,
     `3. Rate: Rs ${o.rate} per ${o.material.unit}, exclusive of GST at ${o.material.gst_rate}%.`,
     `4. Payment: within ${o.party.credit_days} days of each invoice.`,
-    `5. Quality: as per the agreed specification and the lab report at loading.`,
-    `6. Each dispatch will carry an invoice and, where required, a valid e-way bill.`,
-    o.terms ? `7. Other terms: ${o.terms}` : "",
+    `5. Quality: as per the agreed specification${o.material.note ? ` (${o.material.note})` : ""}, tested by an accredited laboratory on a sample drawn jointly at loading. For coal, the price moves pro-rata with GCV against the contracted GCV, and ash or moisture above the guarantee is deducted as agreed. Any difference is settled by a credit or debit note.`,
+    `6. Weight: the loading-point weighbridge weight is final unless the buyer's weighbridge shows a difference of more than 0.5%, in which case both slips are compared before billing.`,
+    `7. Dispatch and documents: each dispatch carries a tax invoice and, where required, a valid e-way bill. Risk passes to the buyer on delivery at the agreed point; title passes on full payment.`,
+    `8. Late payment: amounts unpaid after the due date may carry interest at 18% a year.`,
+    `9. Force majeure: neither party is liable for delay caused by events beyond its control (strikes, rake shortage, mine closure, natural calamity, government order), if the other party is told promptly.`,
+    `10. Disputes: any dispute is settled by arbitration under the Arbitration and Conciliation Act, 1996, by a sole arbitrator, seated at Raigarh, Chhattisgarh, in English. Courts at Raigarh have jurisdiction.`,
+    offer ? `11. Offer applied: ${offer.title}${offer.discount ? ` (${offer.discount})` : ""}${offer.code ? `, code ${offer.code}` : ""}.` : "",
+    o.terms ? `${offer ? 12 : 11}. Other terms: ${o.terms}` : "",
     co.terms ? `\n${co.terms}` : "",
     ``, `Accepted electronically by the Buyer through the B2All customer portal.`,
   ].filter((x) => x !== "").join("\n");

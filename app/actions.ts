@@ -7,6 +7,7 @@ import { getStore } from "@/lib/store";
 import { getMe, isStaff, mustStaff } from "@/lib/auth";
 import * as D from "@/lib/domain";
 import { aiWrite, hasGmail, sendMail } from "@/lib/integrations";
+import { offersFor } from "@/lib/offers";
 import { stateFromGstin, today } from "@/lib/money";
 import type { Kind } from "@/lib/types";
 
@@ -60,7 +61,7 @@ export async function signOut() {
   redirect("/");
 }
 
-export async function submitEnquiry(payload: string, note: string): Promise<FormState> {
+export async function submitEnquiry(payload: string, note: string, offerId?: string): Promise<FormState> {
   const me = await getMe();
   if (!me) redirect("/login?next=/basket");
   let items: { material_id: string; qty: number }[] = [];
@@ -70,7 +71,10 @@ export async function submitEnquiry(payload: string, note: string): Promise<Form
   if (!Array.isArray(items) || items.length > 100) return { error: "Invalid enquiry. Choose up to 100 materials." };
   const clean = items.filter((i) => i && Number.isFinite(i.qty) && i.qty > 0 && mats.some((m) => m.id === i.material_id && m.active));
   if (!clean.length) return { error: "Add at least one material with a quantity." };
-  const e = await s.insert("enquiries", { customer_id: me.profile.id, status: "new", note: note.slice(0, 500) || null });
+  // An offer is attached only if this customer can actually see it (sent to them, or published on the website).
+  const party = (await s.all("parties", { profile_id: me.profile.id }))[0];
+  const usable = offerId ? (await offersFor(party?.id ?? null, me.profile.name, "")).some((o) => o.id === offerId) : false;
+  const e = await s.insert("enquiries", { customer_id: me.profile.id, status: "new", note: note.slice(0, 500) || null, ...(usable ? { offer_id: offerId } : {}) });
   for (const i of clean) await s.insert("enquiry_items", { enquiry_id: e.id, material_id: i.material_id, qty: i.qty, unit: mats.find((m) => m.id === i.material_id)!.unit });
   revalidatePath("/account");
   return { ok: "sent" };

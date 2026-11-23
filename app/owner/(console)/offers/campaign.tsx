@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useMemo, useState } from "react";
-import { Sparkles, MessageCircle, Mail, Smartphone } from "lucide-react";
+import { Sparkles, MessageCircle, Mail, Smartphone, Globe } from "lucide-react";
 import { aiDraftOffer, type FormState } from "@/app/actions";
 import { createCampaign } from "@/app/books-actions";
 
@@ -60,11 +60,11 @@ export default function Campaign({ customers, materials, audience, ai, gmail }: 
             <label className="col-span-2 text-xs text-ink2">Valid till<input name="valid_till" type="date" className="input mt-1" /></label>
           </div></div>
         <div><div className="mb-2 text-sm font-medium text-ink2">2 · Send by</div>
-          <div className="grid grid-cols-3 gap-2">{([["whatsapp", "WhatsApp", MessageCircle], ["email", gmail ? "Email (auto)" : "Email", Mail], ["sms", "SMS", Smartphone]] as const).map(([k, l, Icon]) => <label key={k} className={`flex cursor-pointer flex-col items-center gap-1 rounded-xl border p-3 text-xs font-medium ${channel === k ? "border-ink bg-ink text-s1" : "border-line"}`}><input type="radio" name="channel" value={k} checked={channel === k} onChange={() => setChannel(k)} className="sr-only" /><Icon size={18} />{l}</label>)}</div>
-          <p className="mt-2 text-xs text-ink2">{reachable} of {to.size} selected have {channel === "email" ? "an email" : "a mobile number"}.{channel === "whatsapp" && " Next you get a send queue: each tap opens WhatsApp with the personal message typed in."}</p></div>
+          <div className="grid grid-cols-4 gap-2">{([["whatsapp", "WhatsApp", MessageCircle], ["email", gmail ? "Email (auto)" : "Email", Mail], ["sms", "SMS", Smartphone], ["website", "Website", Globe]] as const).map(([k, l, Icon]) => <label key={k} className={`flex cursor-pointer flex-col items-center gap-1 rounded-xl border p-3 text-xs font-medium ${channel === k ? "border-ink bg-ink text-s1" : "border-line"}`}><input type="radio" name="channel" value={k} checked={channel === k} onChange={() => setChannel(k)} className="sr-only" /><Icon size={18} />{l}</label>)}</div>
+          <p className="mt-2 text-xs text-ink2">{channel === "website" ? "Shown to every visitor on the homepage and in every customer's account until the valid-till date. Selected customers are ignored." : <>{reachable} of {to.size} selected have {channel === "email" ? "an email" : "a mobile number"}. Each one also sees it under “Offers for you” on the website.{channel === "whatsapp" && " Next you get a send queue: each tap opens WhatsApp with the personal message typed in."}</>}</p></div>
         <div className="rounded-xl rounded-tl-sm bg-pri-c p-4 text-sm text-on-pri-c"><div className="mb-1 text-[10px] uppercase tracking-wider opacity-70">Preview{sample ? ` for ${sample.name}` : ""}</div><div className="font-medium">{preview.t}</div><div className="mt-1 whitespace-pre-wrap">{preview.b}</div><div className="mt-2 opacity-70">— B2All Commo</div></div>
         {st.error && <p role="alert" className="text-sm font-medium text-err">{st.error}</p>}
-        <button className="btn btn-filled btn-lg w-full" disabled={!to.size || !body.trim() || pending}>{pending ? "Preparing…" : `Prepare for ${to.size} customer${to.size === 1 ? "" : "s"}`}</button>
+        <button className="btn btn-filled btn-lg w-full" disabled={(!to.size && channel !== "website") || !body.trim() || pending}>{pending ? "Preparing…" : channel === "website" ? "Publish on the website" : `Prepare for ${to.size} customer${to.size === 1 ? "" : "s"}`}</button>
       </form>
       {ai && <form action={draft} className="card-tonal space-y-2 p-5 xl:col-start-2"><div className="flex items-center gap-2 font-medium"><Sparkles size={18} className="text-pri" />Write it for me</div><input name="idea" defaultValue={d.values?.idea} placeholder="e.g. 300 MT silico manganese ready this week" className="input" /><button className="btn btn-tonal w-full" disabled={drafting}>{drafting ? "Writing…" : "Draft message"}</button></form>}
     </div>
