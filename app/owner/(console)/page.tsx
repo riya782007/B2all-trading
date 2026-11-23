@@ -6,6 +6,8 @@ import { getStore } from "@/lib/store";
 import { invoiceViews, orderViews, outstanding, stock } from "@/lib/domain";
 import { fy, inr, num, sdate, today, addDays, r2 } from "@/lib/money";
 import { Bar, Chip, Empty, Page, Section, Stat } from "@/components/ui";
+import { personas } from "@/lib/crm";
+import { Megaphone } from "lucide-react";
 
 export default async function Home() {
   const me = (await staff())!;
@@ -18,6 +20,11 @@ export default async function Home() {
   const open = ov.filter((o) => o.status === "open");
   const tasks: { icon: typeof Inbox; text: string; href: string; tone: "red" | "amber" | "blue" }[] = [];
   if (enq.length && allowed(me, "crm")) tasks.push({ icon: Inbox, text: `${enq.length} new enquir${enq.length > 1 ? "ies" : "y"} from the website`, href: "/owner/enquiries", tone: "blue" });
+  if (allowed(me, "crm", "create")) {
+    const people = await personas(s); const dueSoon = people.filter((p) => p.segment === "Due to reorder"), slipping = people.filter((p) => p.segment === "Slipping");
+    if (dueSoon.length) tasks.push({ icon: Megaphone, text: `${dueSoon.length} customer${dueSoon.length > 1 ? "s are" : " is"} due to reorder (${dueSoon.slice(0, 2).map((p) => p.name).join(", ")}${dueSoon.length > 2 ? "…" : ""}). Send an offer now`, href: "/owner/offers?activity=Due%20to%20reorder", tone: "blue" });
+    if (slipping.length) tasks.push({ icon: Megaphone, text: `${slipping.length} customer${slipping.length > 1 ? "s have" : " has"} not ordered for longer than usual. Win them back`, href: "/owner/offers?activity=Slipping", tone: "amber" });
+  }
   ov.filter((o) => o.over > 0).forEach((o) => tasks.push({ icon: AlertTriangle, text: `${o.number}: ${num(o.over)} ${o.material.unit} more than ordered`, href: `/owner/orders/${o.id}`, tone: "red" }));
   ov.filter((o) => o.kind === "sale" && o.unbilled > 0).forEach((o) => tasks.push({ icon: ReceiptIndianRupee, text: `${o.number}: ${num(o.unbilled)} ${o.material.unit} dispatched but not invoiced`, href: `/owner/invoices/new?kind=sale&order=${o.id}`, tone: "amber" }));
   ov.filter((o) => o.kind === "purchase" && o.unbilled > 0).forEach((o) => tasks.push({ icon: ReceiptIndianRupee, text: `${o.number}: ${num(o.unbilled)} ${o.material.unit} received, supplier bill not entered`, href: `/owner/invoices/new?kind=purchase&order=${o.id}`, tone: "amber" }));

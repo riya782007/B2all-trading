@@ -39,7 +39,7 @@ export async function seed(s: Store) {
   const cust2 = await P("demo-cust2", "Sunita Verma", "customer", { company: "Vidarbha Alloys", city: "Nagpur", state_code: "27", phone: "+919810000002" });
 
   const by = "Sample data";
-  const jain = await createParty(s, by, { name: "Jain Steel & Power", type: "customer", gstin: "22BBBBB1111B1Z2", city: "Raipur", pincode: "492001", phone: "+919810000001", profile_id: cust.id, credit_days: 15, email: "purchase@example.com" });
+  const jain = await createParty(s, by, { name: "Jain Steel & Power", type: "customer", gstin: "22BBBBB1111B1Z2", city: "Raipur", pincode: "492001", phone: "+919810000001", profile_id: cust.id, credit_days: 7, email: "purchase@example.com" });
   const vid = await createParty(s, by, { name: "Vidarbha Alloys", type: "customer", state_code: "27", city: "Nagpur", pincode: "440001", phone: "+919810000002", profile_id: cust2.id, credit_days: 30 });
   const mehta = await createParty(s, by, { name: "Mehta Sponge Iron", type: "customer", state_code: "22", city: "Bhilai", phone: "+919810000004" });
   const mines = await createParty(s, by, { name: "Sample Mines Pvt Ltd", type: "supplier", gstin: "21CCCCC2222C1Z9", city: "Keonjhar", phone: "+919820000001" });
@@ -79,6 +79,9 @@ export async function seed(s: Store) {
   await createInvoice(s, by, { order_id: so3.id, delivery_ids: [so3d[0].id], date: d(-9) });
   await createOrder(s, by, { kind: "sale", party_id: mehta.id, material_id: fem.id, qty: 25, rate: 81000, date: d(-1) });
 
+  // A regular buyer who orders about every 20 days and is due again now (shows reorder prompts and targeting in the demo)
+  const bst = await createParty(s, by, { name: "Bhilai Steel Traders", type: "customer", state_code: "22", city: "Bhilai", pincode: "490001", phone: "+919810000005", credit_days: 15 });
+  for (const dd of [-62, -41, -20]) { const ox = await createOrder(s, by, { kind: "sale", party_id: bst.id, material_id: coal.id, qty: 200, rate: 6100, date: d(dd) }); await setClosed(s, ox.id); }
   await recordMoney(s, by, { direction: "out", party_id: mines.id, amount: 2000000, mode: "Bank", date: d(-20) });
   await recordExpense(s, by, { ledger: "Freight", amount: 42000, mode: "Bank", date: d(-10), narration: "Freight for DC-501 to DC-513" });
 

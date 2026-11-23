@@ -52,3 +52,11 @@ export function applyFilter(rows: Persona[], f: Filter) {
     (!f.reach || (f.reach === "whatsapp" ? !!p.whatsapp : f.reach === "email" ? !!p.email : true)) &&
     (!f.source || (f.source === "website" ? p.registered : !p.registered)));
 }
+
+/** A customer's statement of account from the vouchers they may see: bills raise the balance, payments and credit notes lower it. */
+export async function customerStatement(s: Store, partyId: string) {
+  const vs = (await s.all("vouchers", { party_id: partyId })).filter((v) => ["sales", "receipt", "credit_note"].includes(v.type)).sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at));
+  let run = 0;
+  const lines = vs.map((v) => { const dr = v.type === "sales" ? Number(v.amount) : 0, cr = v.type === "sales" ? 0 : Number(v.amount); run = r2(run + dr - cr); return { id: v.id, date: v.date, type: v.type, number: v.number, invoice_id: v.invoice_id ?? null, dr, cr, run }; });
+  return { lines, balance: run };
+}

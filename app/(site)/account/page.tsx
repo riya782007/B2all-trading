@@ -4,6 +4,9 @@ import { FileSignature, Sparkles, TrendingUp, Repeat, Package, Truck, FileText }
 import { getMe } from "@/lib/auth";
 import OfferCards from "@/components/site/OfferCards";
 import { offersFor } from "@/lib/offers";
+import { customerStatement } from "@/lib/crm";
+import { publicContact } from "@/lib/contact";
+import PrintButton from "@/components/PrintButton";
 import { getStore } from "@/lib/store";
 import { insights } from "@/lib/domain";
 import { fdate, inr, num, sdate } from "@/lib/money";
@@ -23,6 +26,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const ins = party ? await insights(s, party.id) : null;
   const [enqs, items, mats, contracts] = await Promise.all([s.all("enquiries", { customer_id: me.profile.id }), s.all("enquiry_items"), s.all("materials"), party ? s.all("contracts", { party_id: party.id }) : Promise.resolve([])]);
   const offers = await offersFor(party?.id ?? null, party?.name ?? me.profile.name, party?.city ?? me.profile.city ?? "", ins?.top?.m.name ?? "");
+  const [stmt, contact] = tab === "documents" && party ? await Promise.all([customerStatement(s, party.id), publicContact()]) : [null, null];
   const toSign = contracts.filter((c) => c.status === "sent");
   const openEnq = enqs.filter((e) => e.status === "new" || e.status === "quoted").sort((a, b) => b.created_at.localeCompare(a.created_at));
   const first = me.profile.name.split(" ")[0];
@@ -72,6 +76,12 @@ export default async function Account({ searchParams }: { searchParams: Promise<
       </div>)}
 
       {tab === "documents" && (<div className="mt-6 space-y-6">
+        {stmt && stmt.lines.length > 0 && <section><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-medium">Statement of account</h2><PrintButton label="Print or save as PDF" /></div>
+          <div className="mb-3 grid gap-3 sm:grid-cols-3"><Card icon={TrendingUp} label="Balance due" value={inr(Math.max(0, stmt.balance))} hint={stmt.balance < 0 ? `${inr(-stmt.balance)} paid in advance` : ins && ins.invoices.some((i) => i.overdue > 0) ? `${ins.invoices.filter((i) => i.overdue > 0).length} bill${ins.invoices.filter((i) => i.overdue > 0).length > 1 ? "s" : ""} past due` : "Nothing overdue"} />{contact?.bank && <div className="card p-5 sm:col-span-2"><div className="text-xs font-medium text-ink2">Pay by bank transfer</div><div className="mt-2 whitespace-pre-line text-sm font-medium">{contact.bank}</div><div className="mt-2 text-xs text-ink2">Mention the invoice number in the remark so it is matched quickly.</div></div>}</div>
+          <div className="card divide-y divide-line sm:hidden">{stmt.lines.map((l) => <div key={l.id} className="flex items-start justify-between gap-3 px-4 py-3 text-sm"><div><div className="font-medium">{l.type === "sales" ? "Invoice" : l.type === "receipt" ? "Payment received" : "Credit note"}</div><div className="text-xs text-ink2">{sdate(l.date)} · {l.invoice_id && l.type === "sales" ? <Link className="text-pri underline" href={`/account/invoices/${l.invoice_id}`}>{l.number}</Link> : l.number}</div></div><div className="text-right"><div className={l.dr ? "" : "text-ok"}>{l.dr ? inr(l.dr) : `− ${inr(l.cr)}`}</div><div className="text-xs text-ink2">bal {inr(Math.abs(l.run))} {l.run < 0 ? "Cr" : "Dr"}</div></div></div>)}</div>
+          <div className="card hidden overflow-x-auto sm:block"><table className="tbl min-w-[560px]"><thead><tr><th>Date</th><th>Particulars</th><th className="num">Billed</th><th className="num">Paid / credited</th><th className="num">Balance</th></tr></thead><tbody>
+            {stmt.lines.map((l) => <tr key={l.id}><td>{sdate(l.date)}</td><td>{l.type === "sales" ? <>Invoice {l.invoice_id ? <Link className="text-pri underline" href={`/account/invoices/${l.invoice_id}`}>{l.number}</Link> : l.number}</> : l.type === "receipt" ? `Payment received ${l.number}` : `Credit note ${l.number}`}</td><td className="num">{l.dr ? inr(l.dr, 2) : ""}</td><td className="num">{l.cr ? inr(l.cr, 2) : ""}</td><td className="num font-medium">{inr(Math.abs(l.run), 2)} {l.run < 0 ? "Cr" : "Dr"}</td></tr>)}
+          </tbody></table></div></section>}
         <section><h2 className="mb-3 text-lg font-medium">Contracts</h2>{!contracts.length ? <Empty icon={FileSignature} title="No contracts yet" /> : <div className="space-y-2">{contracts.filter((c) => c.status !== "draft" && c.status !== "cancelled").map((c) => <Link key={c.id} href={`/account/contracts/${c.id}`} className="card flex items-center justify-between gap-3 p-4"><span className="flex items-center gap-3"><FileSignature size={18} className="text-ink2" />{c.number}</span><Chip tone={c.status === "signed" ? "green" : "amber"}>{c.status === "signed" ? `Signed ${sdate(c.signed_at)}` : "Waiting for you"}</Chip></Link>)}</div>}</section>
         <section><h2 className="mb-3 text-lg font-medium">Invoices</h2>{!ins?.invoices.length ? <Empty icon={FileText} title="No invoices yet" /> : <div className="card overflow-x-auto"><table className="tbl"><thead><tr><th>Invoice</th><th>Date</th><th className="num">Amount</th><th>Status</th></tr></thead><tbody>{ins.invoices.map((i) => <tr key={i.id}><td><Link href={`/account/invoices/${i.id}`} className="font-medium text-pri underline-offset-2 hover:underline">{i.number}</Link></td><td>{sdate(i.date)}</td><td className="num">{inr(i.total)}</td><td><Chip tone={i.status === "paid" ? "green" : i.overdue ? "red" : "amber"}>{i.status === "paid" ? "Paid" : i.overdue ? `${i.overdue} days late` : `Due ${sdate(i.due_date)}`}</Chip></td></tr>)}</tbody></table></div>}</section>
       </div>)}
