@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 
 if (Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) !== Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) throw new Error("Both Supabase environment variables must be configured together.");
 
-export const hasSupabase = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+/** DEMO_MODE=1 runs the full app on built-in sample data (for demos), even where database keys are set. */
+export const hasSupabase = process.env.DEMO_MODE !== "1" && Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function supabaseServer() {
   const jar = await cookies();
