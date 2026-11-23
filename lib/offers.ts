@@ -15,12 +15,12 @@ export async function publicOffers(): Promise<LiveOffer[]> {
     let rows: Offer[];
     if (hasSupabase) { const sb = await supabaseServer(); const { data } = await sb.rpc("public_offers"); rows = (data ?? []) as Offer[]; }
     else rows = (await s.all("offers")).filter((o) => o.channel === "website" && live(o));
-    return rows.map((o) => ({ id: o.id, title: o.title, body: personalise(o.body, { name: "there", company: "", city: "your city", material: mats.find((m) => m.id === o.material_id)?.name ?? "our materials" }), code: o.code ?? null, discount: o.discount ?? null, material_id: o.material_id ?? null, material: mats.find((m) => m.id === o.material_id)?.name ?? "", valid_till: o.valid_till ?? null, forYou: false }));
+    return rows.map((o) => ({ id: o.id, title: personalise(o.title, { name: "there", company: "", city: "your city", material: mats.find((m) => m.id === o.material_id)?.name ?? "our materials" }), body: personalise(o.body, { name: "there", company: "", city: "your city", material: mats.find((m) => m.id === o.material_id)?.name ?? "our materials" }), code: o.code ?? null, discount: o.discount ?? null, material_id: o.material_id ?? null, material: mats.find((m) => m.id === o.material_id)?.name ?? "", valid_till: o.valid_till ?? null, forYou: false }));
   } catch { return []; }
 }
 
 /** Offers a signed-in customer can use: ones sent to them, plus website-wide ones. Personalised with their name. */
-export async function offersFor(partyId: string | null, name: string, city: string): Promise<LiveOffer[]> {
+export async function offersFor(partyId: string | null, name: string, city: string, usual = ""): Promise<LiveOffer[]> {
   try {
     const s = await getStore();
     const [offers, sends, mats, ins] = await Promise.all([s.all("offers"), partyId ? s.all("offer_sends", { party_id: partyId }) : Promise.resolve([]), s.all("materials"), Promise.resolve(null)]);
@@ -28,7 +28,7 @@ export async function offersFor(partyId: string | null, name: string, city: stri
     const mine = new Set(sends.map((x) => x.offer_id));
     return offers.filter((o) => live(o) && (mine.has(o.id) || o.channel === "website")).sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 6).map((o) => {
       const material = mats.find((m) => m.id === o.material_id)?.name ?? "";
-      return { id: o.id, title: personalise(o.title, { name, company: name, city, material: material || "your material" }), body: personalise(o.body, { name, company: name, city, material: material || "your material" }), code: o.code ?? null, discount: o.discount ?? null, material_id: o.material_id ?? null, material, valid_till: o.valid_till ?? null, forYou: mine.has(o.id) };
+      return { id: o.id, title: personalise(o.title, { name, company: name, city, material: material || usual || "your material" }), body: personalise(o.body, { name, company: name, city, material: material || usual || "your material" }), code: o.code ?? null, discount: o.discount ?? null, material_id: o.material_id ?? null, material, valid_till: o.valid_till ?? null, forYou: mine.has(o.id) };
     });
   } catch { return []; }
 }

@@ -22,7 +22,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const party = (await s.all("parties", { profile_id: me.profile.id }))[0];
   const ins = party ? await insights(s, party.id) : null;
   const [enqs, items, mats, contracts] = await Promise.all([s.all("enquiries", { customer_id: me.profile.id }), s.all("enquiry_items"), s.all("materials"), party ? s.all("contracts", { party_id: party.id }) : Promise.resolve([])]);
-  const offers = await offersFor(party?.id ?? null, party?.name ?? me.profile.name, party?.city ?? me.profile.city ?? "");
+  const offers = await offersFor(party?.id ?? null, party?.name ?? me.profile.name, party?.city ?? me.profile.city ?? "", ins?.top?.m.name ?? "");
   const toSign = contracts.filter((c) => c.status === "sent");
   const openEnq = enqs.filter((e) => e.status === "new" || e.status === "quoted").sort((a, b) => b.created_at.localeCompare(a.created_at));
   const first = me.profile.name.split(" ")[0];

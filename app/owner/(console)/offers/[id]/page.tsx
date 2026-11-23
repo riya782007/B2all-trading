@@ -3,7 +3,7 @@ import { staff } from "@/lib/auth";
 import { getStore } from "@/lib/store";
 import { personas } from "@/lib/crm";
 import { company } from "@/lib/domain";
-import { personalise } from "@/lib/links";
+import { personalise, templateLabel } from "@/lib/links";
 import { fdate } from "@/lib/money";
 import { Denied, Notice, Page } from "@/components/ui";
 import Queue from "./queue";
@@ -25,7 +25,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
   const replies = enq.filter((e) => e.created_at >= o.created_at && prof.has(e.customer_id)).length;
   const used = enq.filter((e) => e.offer_id === o.id).length;
   return (
-    <Page title={o.title} sub={`Prepared ${fdate(o.created_at)} for ${rows.length} customers by ${channel}${replies ? ` · ${replies} enquiries since` : ""}${used ? ` · ${used} enquiries used this offer` : ""}`} back={{ href: "/owner/offers", label: "Offers" }}>
+    <Page title={templateLabel(o.title, mat)} sub={`Prepared ${fdate(o.created_at)} for ${rows.length} customers by ${channel}${replies ? ` · ${replies} enquiries since` : ""}${used ? ` · ${used} enquiries used this offer` : ""}`} back={{ href: "/owner/offers", label: "Offers" }}>
       {sp.new && <Notice>{channel === "email" && Number(sp.mailed) > 0 ? `${sp.mailed} emails sent from your company Gmail.` : channel === "whatsapp" ? "Ready. Press “Send next” and WhatsApp opens with the personal message typed. Tap send there, come back, press again." : "Ready to send."}</Notice>}
       {channel === "website" ? <Notice>Live on the website{o.valid_till ? ` until ${fdate(o.valid_till)}` : ""}: on the homepage under “Current offers” and in every customer&apos;s account.</Notice> : <Queue rows={rows} channel={channel as "whatsapp" | "email" | "sms"} title={o.title} />}
     </Page>

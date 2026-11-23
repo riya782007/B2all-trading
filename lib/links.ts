@@ -7,3 +7,5 @@ export const mailBcc = (emails: string[], subject: string, body: string) => `mai
 export const sms = (phone: string, text: string) => `sms:${phone}?&body=${encodeURIComponent(text)}`;
 /** Fills {name}, {company}, {material}, {city} in an offer for one customer. */
 export const personalise = (t: string, v: Record<string, string>) => t.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
+/** A template's title for lists: placeholders read as plain words ("Time to restock their material?"). */
+export const templateLabel = (t: string, material?: string) => personalise(t, { name: "each customer", company: "each customer", city: "their city", material: material || "their material" });

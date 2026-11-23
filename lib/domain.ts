@@ -228,6 +228,9 @@ export async function balances(s: Store) {
 }
 export async function trialBalance(s: Store) {
   const rows = (await balances(s)).filter((r) => r.closing !== 0);
+  // As in Tally with inventory: opening stock is a debit in the trial balance (Stock-in-Hand), not a ledger of its own.
+  const openingStock = r2((await s.all("materials")).reduce((t, m) => t + Number(m.opening_qty) * Number(m.opening_rate), 0));
+  if (openingStock) rows.push({ id: "opening-stock", name: "Opening stock", grp: "Stock-in-Hand", opening: openingStock, party_id: null, dr: 0, cr: 0, closing: openingStock });
   const dr = r2(rows.reduce((t, r) => t + Math.max(r.closing, 0), 0)), cr = r2(rows.reduce((t, r) => t + Math.max(-r.closing, 0), 0));
   return { rows, dr, cr, ok: dr === cr };
 }

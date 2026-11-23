@@ -5,6 +5,7 @@ import { getStore } from "@/lib/store";
 import { hasAI, hasGmail } from "@/lib/integrations";
 import { applyFilter, personas, type Filter } from "@/lib/crm";
 import { company } from "@/lib/domain";
+import { templateLabel } from "@/lib/links";
 import { sdate } from "@/lib/money";
 import { Chip, Denied, Empty, Page, Section, Stat } from "@/components/ui";
 import Campaign from "./campaign";
@@ -56,7 +57,7 @@ export default async function Offers({ searchParams }: { searchParams: Promise<F
         ai={hasAI} gmail={hasGmail} />
 
       <Section title="Campaign history">{offers.length ? <div className="card divide-y divide-line">{[...offers].sort((a, b) => b.created_at.localeCompare(a.created_at)).map((o) => { const n = sends.filter((x) => x.offer_id === o.id).length; const r = responses(o.id, o.created_at) + enq.filter((e) => e.offer_id === o.id && !parties.some((p) => p.profile_id === e.customer_id && sends.some((x) => x.offer_id === o.id && x.party_id === p.id))).length; return (
-        <Link key={o.id} href={`/owner/offers/${o.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-s2"><div className="min-w-0 flex-1"><div className="font-medium">{o.title}</div><div className="text-sm text-ink2">{sdate(o.created_at)} · {o.channel === "website" ? "on the website" : `${n} customers`}{o.channel && o.channel !== "website" ? ` · ${o.channel}` : ""}{o.code ? ` · code ${o.code}` : ""}</div></div>{r > 0 && <Chip tone="green">{r} enquir{r > 1 ? "ies" : "y"} after</Chip>}<span className="text-sm font-medium text-pri">Open</span></Link>); })}</div> : <Empty icon={Megaphone} title="No offers yet">Pick customers above and write your first offer.</Empty>}</Section>
+        <Link key={o.id} href={`/owner/offers/${o.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-s2"><div className="min-w-0 flex-1"><div className="font-medium">{templateLabel(o.title, mats.find((m) => m.id === o.material_id)?.name)}</div><div className="text-sm text-ink2">{sdate(o.created_at)} · {o.channel === "website" ? "on the website" : `${n} customers`}{o.channel && o.channel !== "website" ? ` · ${o.channel}` : ""}{o.code ? ` · code ${o.code}` : ""}</div></div>{r > 0 && <Chip tone="green">{r} enquir{r > 1 ? "ies" : "y"} after</Chip>}<span className="text-sm font-medium text-pri">Open</span></Link>); })}</div> : <Empty icon={Megaphone} title="No offers yet">Pick customers above and write your first offer.</Empty>}</Section>
       {!hasAI && <p className="mt-3 flex items-center gap-2 text-xs text-ink2"><Sparkles size={14} />Add an OpenAI key in Vercel to get “write it for me”.</p>}
     </Page>
   );

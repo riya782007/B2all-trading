@@ -2,6 +2,7 @@ import { Inbox, MessageCircle } from "lucide-react";
 import { staff, allowed } from "@/lib/auth";
 import { getStore } from "@/lib/store";
 import { personas } from "@/lib/crm";
+import { personalise } from "@/lib/links";
 import { num, sdate } from "@/lib/money";
 import { wa } from "@/lib/links";
 import { Chip, Denied, Empty, Filters, Page } from "@/components/ui";
@@ -25,7 +26,7 @@ export default async function Enquiries({ searchParams }: { searchParams: Promis
             <div className="flex flex-wrap items-start justify-between gap-2"><div><div className="display text-lg font-medium">{c?.company || c?.name}</div><div className="text-sm text-ink2">{c?.name} · {c?.city} · {c?.phone} · {sdate(e.created_at)}</div></div><Chip tone={e.status === "new" ? "amber" : e.status === "won" ? "green" : e.status === "quoted" ? "blue" : "grey"}>{e.status}</Chip></div>
             <p className="mt-3 text-lg">{summary}</p>{e.note && <p className="mt-1 text-sm text-ink2">“{e.note}”</p>}
             {(() => { const o = offers.find((x) => x.id === e.offer_id); const pid = parties.find((p) => p.profile_id === e.customer_id)?.id; const pe = people.find((x) => x.id === pid); return <>
-              {o && <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-ok-c px-3 py-1 text-sm text-on-ok-c">Came from offer <b>{o.title}</b>{o.discount ? ` · ${o.discount}` : ""}{o.code ? ` · code ${o.code}` : ""}</p>}
+              {o && <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-ok-c px-3 py-1 text-sm text-on-ok-c">Came from offer <b>{personalise(o.title, { name: c?.company || c?.name || "", company: c?.company || "", city: c?.city || "", material: mats.find((m) => m.id === o.material_id)?.name || "their material" })}</b>{o.discount ? ` · ${o.discount}` : ""}{o.code ? ` · code ${o.code}` : ""}</p>}
               {pe && <p className="mt-2 text-xs text-ink2">{pe.segment} · {pe.orders} orders{pe.topMaterial ? ` · usually ${pe.topMaterial}` : ""}{pe.outstanding > 0 ? ` · ₹${pe.outstanding.toLocaleString("en-IN")} due` : ""}{pe.tags.length ? ` · ${pe.tags.join(", ")}` : ""} · <a className="text-pri underline" href={`/owner/parties/${pe.id}`}>profile</a></p>}
             </>; })()}
             <div className="mt-4 flex flex-wrap gap-2">
