@@ -40,6 +40,7 @@ export function MobileNav({ groups }: { groups: NavGroup[] }) {
           <div className="h-full overflow-y-auto bg-rail px-4 pb-6 pt-4 shadow-xl">
             <div className="mb-6 flex items-center justify-between pl-1"><Logo tone="light" /><button className="grid size-11 place-items-center rounded-lg text-rail-ink hover:bg-rail-hover" onClick={() => setOpen(false)} aria-label="Close menu"><X size={20} /></button></div>
             <List groups={groups} onPick={() => setOpen(false)} />
+            <a href="/" target="_blank" rel="noopener" onClick={() => setOpen(false)} className="mt-6 flex min-h-11 items-center justify-between rounded-lg border-t border-line px-3 pt-4 text-sm font-medium text-ink hover:bg-rail-hover">View customer website<ArrowUpRight size={16} /></a>
           </div>
       </dialog>
     </>
